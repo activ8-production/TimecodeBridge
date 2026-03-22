@@ -5,8 +5,6 @@ using TimecodeBridge.Services.Interfaces;
 
 namespace TimecodeBridge.ViewModels;
 
-public record LogEntry(DateTime Timestamp, string Message, bool IsSuccess);
-
 public partial class LogViewModel : DispatcherViewModel
 {
     private const int MaxLogEntries = 1000;

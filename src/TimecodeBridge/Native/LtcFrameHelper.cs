@@ -3,56 +3,6 @@ using System.Runtime.InteropServices;
 namespace TimecodeBridge.Native;
 
 /// <summary>
-/// P/Invoke declarations for libltc native library.
-/// These are resolved at runtime; the application will build even without libltc.dll present.
-/// </summary>
-internal static class LibLtcInterop
-{
-    private const string LibName = "libltc";
-
-    /// <summary>
-    /// Create a new LTC decoder.
-    /// </summary>
-    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr ltc_decoder_create(int apv, int queueSize);
-
-    /// <summary>
-    /// Feed audio samples to the decoder.
-    /// </summary>
-    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void ltc_decoder_write(IntPtr decoder, byte[] buf, nint size, long posinfo);
-
-    /// <summary>
-    /// Feed audio samples using pinned memory to prevent GC from moving the buffer.
-    /// </summary>
-    internal static void ltc_decoder_write_safe(IntPtr decoder, byte[] buf, int size, long posinfo)
-    {
-        var handle = System.Runtime.InteropServices.GCHandle.Alloc(buf, System.Runtime.InteropServices.GCHandleType.Pinned);
-        try
-        {
-            ltc_decoder_write(decoder, buf, (nint)size, posinfo);
-        }
-        finally
-        {
-            handle.Free();
-        }
-    }
-
-    /// <summary>
-    /// Read a decoded LTC frame from the decoder queue.
-    /// Uses IntPtr to avoid struct layout issues with stack-allocated out parameter.
-    /// </summary>
-    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern int ltc_decoder_read(IntPtr decoder, IntPtr frame);
-
-    /// <summary>
-    /// Free the decoder and associated resources.
-    /// </summary>
-    [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
-    internal static extern void ltc_decoder_free(IntPtr decoder);
-}
-
-/// <summary>
 /// Helper to extract timecode values from a raw LTCFrameExt buffer.
 /// LTC encodes BCD digits in specific bit positions within the 80-bit frame.
 ///

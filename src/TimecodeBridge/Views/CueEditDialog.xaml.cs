@@ -1,15 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using TimecodeBridge.Models;
+using TimecodeBridge.ViewModels;
 
 namespace TimecodeBridge.Views;
-
-public class HostSelectionItem
-{
-    public string Id { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public bool IsSelected { get; set; }
-}
 
 public partial class CueEditDialog : Window
 {
@@ -51,7 +45,7 @@ public partial class CueEditDialog : Window
         }
 
         // Populate host selection
-        var hostItems = allHosts.Select(h => new HostSelectionItem
+        var hostItems = allHosts.Select(h => new HostSelection
         {
             Id = h.Id,
             Name = $"{h.Name} ({h.IpAddress}:{h.Port})",
@@ -146,7 +140,7 @@ public partial class CueEditDialog : Window
         }
 
         var selectedHostIds = new List<string>();
-        if (HostListBox.ItemsSource is IEnumerable<HostSelectionItem> items)
+        if (HostListBox.ItemsSource is IEnumerable<HostSelection> items)
         {
             selectedHostIds.AddRange(items.Where(x => x.IsSelected).Select(x => x.Id));
         }

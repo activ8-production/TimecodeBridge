@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:local="clr-namespace:TimecodeBridge.Views"
+             xmlns:converters="clr-namespace:TimecodeBridge.Converters"
              mc:Ignorable="d"
              d:DesignHeight="80" d:DesignWidth="400">
     <Border Background="{DynamicResource SecondaryBackgroundBrush}"
@@ -28,8 +29,8 @@
                 <Canvas x:Name="WaveformCanvas">
                     <!-- Center line -->
                     <Line X1="0" X2="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}"
-                          Y1="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Canvas}, Converter={x:Static local:HalfConverter.Instance}}"
-                          Y2="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Canvas}, Converter={x:Static local:HalfConverter.Instance}}"
+                          Y1="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Canvas}, Converter={x:Static converters:HalfConverter.Instance}}"
+                          Y2="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Canvas}, Converter={x:Static converters:HalfConverter.Instance}}"
                           Stroke="#303050" StrokeThickness="1" />
                     <!-- Waveform polyline rendered in code-behind -->
                     <Polyline x:Name="WaveformLine"

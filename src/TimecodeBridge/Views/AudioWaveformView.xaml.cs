@@ -1,8 +1,5 @@
-using System.ComponentModel;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Media;
 using TimecodeBridge.ViewModels;
 
@@ -10,75 +7,76 @@ namespace TimecodeBridge.Views;
 
 public partial class AudioWaveformView : UserControl
 {
+    private static readonly SolidColorBrush PeakBrushRed = new(Color.FromRgb(0xE0, 0x52, 0x52));
+    private static readonly SolidColorBrush PeakBrushYellow = new(Color.FromRgb(0xE0, 0xA0, 0x40));
+    private static readonly SolidColorBrush PeakBrushGreen = new(Color.FromRgb(0x60, 0xC0, 0x60));
+
+    static AudioWaveformView()
+    {
+        PeakBrushRed.Freeze();
+        PeakBrushYellow.Freeze();
+        PeakBrushGreen.Freeze();
+    }
+
+    private readonly float[] _readBuffer = new float[AudioWaveformViewModel.DisplaySampleCount];
+    private PointCollection? _reusablePoints;
+
     public AudioWaveformView()
     {
         InitializeComponent();
-        DataContextChanged += OnDataContextChanged;
-        WaveformCanvas.SizeChanged += (_, _) => Redraw();
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
-    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (e.OldValue is INotifyPropertyChanged oldVm)
-            oldVm.PropertyChanged -= OnViewModelPropertyChanged;
-
-        if (e.NewValue is INotifyPropertyChanged newVm)
-            newVm.PropertyChanged += OnViewModelPropertyChanged;
+        CompositionTarget.Rendering += OnRendering;
     }
 
-    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        if (e.PropertyName == nameof(AudioWaveformViewModel.WaveformPoints) ||
-            e.PropertyName == nameof(AudioWaveformViewModel.PeakLevel))
-        {
-            Redraw();
-        }
+        CompositionTarget.Rendering -= OnRendering;
     }
 
-    private void Redraw()
+    private void OnRendering(object? sender, EventArgs e)
     {
         if (DataContext is not AudioWaveformViewModel vm) return;
+        if (!vm.ConsumeUpdate(out float peakLevel)) return;
 
         double w = WaveformCanvas.ActualWidth;
         double h = WaveformCanvas.ActualHeight;
         if (w <= 0 || h <= 0) return;
 
-        // Update waveform polyline
-        var points = vm.WaveformPoints;
-        var scaled = new PointCollection(points.Count);
-        foreach (var pt in points)
-        {
-            scaled.Add(new Point(pt.X * w, pt.Y * h));
-        }
-        WaveformLine.Points = scaled;
+        vm.CopyDisplayBuffer(_readBuffer);
 
-        // Update peak bar height
-        double peakHeight = Math.Clamp(vm.PeakLevel, 0, 1) * 50;
+        int count = AudioWaveformViewModel.DisplaySampleCount;
+
+        // Reuse or create PointCollection
+        if (_reusablePoints == null || _reusablePoints.Count != count)
+        {
+            _reusablePoints = new PointCollection(count);
+            for (int i = 0; i < count; i++)
+                _reusablePoints.Add(default);
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            double x = (double)i / (count - 1) * w;
+            double y = (0.5 - _readBuffer[i] * 0.5) * h;
+            _reusablePoints[i] = new Point(x, y);
+        }
+
+        WaveformLine.Points = _reusablePoints;
+
+        // Update peak bar
+        double peakHeight = Math.Clamp(peakLevel, 0, 1) * 50;
         PeakBar.Height = peakHeight;
 
-        // Color: green < 0.6, yellow < 0.85, red >= 0.85
-        PeakBar.Background = vm.PeakLevel switch
+        PeakBar.Background = peakLevel switch
         {
-            >= 0.85 => new SolidColorBrush(Color.FromRgb(0xE0, 0x52, 0x52)),
-            >= 0.6 => new SolidColorBrush(Color.FromRgb(0xE0, 0xA0, 0x40)),
-            _ => new SolidColorBrush(Color.FromRgb(0x60, 0xC0, 0x60)),
+            >= 0.85f => PeakBrushRed,
+            >= 0.6f => PeakBrushYellow,
+            _ => PeakBrushGreen,
         };
     }
-}
-
-/// <summary>
-/// Returns half of the input value. Used for center line positioning.
-/// </summary>
-public class HalfConverter : IValueConverter
-{
-    public static readonly HalfConverter Instance = new();
-
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is double d) return d / 2.0;
-        return 0.0;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        => throw new NotSupportedException();
 }

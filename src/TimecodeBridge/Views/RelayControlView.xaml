@@ -6,6 +6,7 @@
              xmlns:vm="clr-namespace:TimecodeBridge.ViewModels"
              xmlns:models="clr-namespace:TimecodeBridge.Models"
              xmlns:local="clr-namespace:TimecodeBridge.Views"
+             xmlns:converters="clr-namespace:TimecodeBridge.Converters"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:RelayViewModel, IsDesignTimeCreatable=False}"
              Background="{DynamicResource PrimaryBackgroundBrush}"
@@ -43,7 +44,7 @@
             <TextBlock Text="継続送信モード"
                        Margin="0,0,0,4"
                        Foreground="{DynamicResource SecondaryForegroundBrush}" />
-            <ToggleButton Content="{Binding IsContinuousEnabled, Converter={x:Static local:BoolToToggleLabelConverter.Instance}}"
+            <ToggleButton Content="{Binding IsContinuousEnabled, Converter={x:Static converters:BoolToToggleLabelConverter.Instance}}"
                           IsChecked="{Binding IsContinuousEnabled}"
                           Padding="16,6"
                           HorizontalAlignment="Left"
@@ -97,7 +98,7 @@
                 </ComboBox>
                 <TextBox Text="{Binding ContinuousInterval.IntervalMs, Mode=OneWay}"
                          Width="80"
-                         IsEnabled="{Binding SelectedIndex, ElementName=IntervalModeCombo, Converter={x:Static local:IndexToBoolConverter.Instance}}" />
+                         IsEnabled="{Binding SelectedIndex, ElementName=IntervalModeCombo, Converter={x:Static converters:IndexToBoolConverter.Instance}}" />
                 <TextBlock Text="ms"
                            VerticalAlignment="Center"
                            Margin="4,0,0,0"

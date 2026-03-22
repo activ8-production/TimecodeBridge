@@ -9,33 +9,6 @@ using TimecodeBridge.Views;
 
 namespace TimecodeBridge.ViewModels;
 
-public partial class CueItemViewModel : ObservableObject
-{
-    public string Id { get; }
-    public string Name { get; }
-    public string Memo { get; }
-    public TimecodeValue TriggerTime { get; }
-    public string OscAddress { get; }
-    public bool SendTriggerTimeAsSeconds { get; }
-    public TimecodeOffset? CueOffset { get; }
-
-    [ObservableProperty] private bool _isEnabled;
-    [ObservableProperty] private bool _isTriggered;
-    [ObservableProperty] private bool _isNextCue;
-
-    public CueItemViewModel(Cue cue)
-    {
-        Id = cue.Id;
-        Name = cue.Name;
-        Memo = cue.Memo;
-        TriggerTime = cue.TriggerTime;
-        OscAddress = cue.OscAddress;
-        IsEnabled = cue.IsEnabled;
-        SendTriggerTimeAsSeconds = cue.SendTriggerTimeAsSeconds;
-        CueOffset = cue.CueOffset;
-    }
-}
-
 public partial class CueListViewModel : DispatcherViewModel
 {
     private readonly ICueManager _cueManager;
@@ -151,22 +124,8 @@ public partial class CueListViewModel : DispatcherViewModel
         var source = _cueManager.Cues.FirstOrDefault(c => c.Id == cueId);
         if (source is null) return;
 
-        var duplicate = new Cue
-        {
-            Id = Guid.NewGuid().ToString(),
-            Name = source.Name + " (コピー)",
-            Memo = source.Memo,
-            TriggerTime = source.TriggerTime,
-            OscAddress = source.OscAddress,
-            Arguments = source.Arguments.ToList(),
-            TargetHostIds = source.TargetHostIds.ToList(),
-            IsEnabled = source.IsEnabled,
-            SendTriggerTimeAsSeconds = source.SendTriggerTimeAsSeconds,
-            CueOffset = source.CueOffset,
-        };
-
-        _cueManager.AddCue(duplicate);
-        CueItems.Add(new CueItemViewModel(duplicate));
+        var duplicate = CloneCue(source, source.TriggerTime, source.Name + " (コピー)");
+        AddCueInternal(duplicate);
     }
 
     [RelayCommand]
@@ -190,23 +149,32 @@ public partial class CueListViewModel : DispatcherViewModel
             long newTotalFrames = baseFrames + framesPerInterval * i;
             var newTriggerTime = TimecodeValue.FromTotalFrames(newTotalFrames, source.TriggerTime.FrameRate);
 
-            var duplicate = new Cue
-            {
-                Id = Guid.NewGuid().ToString(),
-                Name = source.Name,
-                Memo = source.Memo,
-                TriggerTime = newTriggerTime,
-                OscAddress = source.OscAddress,
-                Arguments = source.Arguments.ToList(),
-                TargetHostIds = source.TargetHostIds.ToList(),
-                IsEnabled = source.IsEnabled,
-                SendTriggerTimeAsSeconds = source.SendTriggerTimeAsSeconds,
-                CueOffset = source.CueOffset,
-            };
-
-            _cueManager.AddCue(duplicate);
-            CueItems.Add(new CueItemViewModel(duplicate));
+            var duplicate = CloneCue(source, newTriggerTime);
+            AddCueInternal(duplicate);
         }
+    }
+
+    private static Cue CloneCue(Cue source, TimecodeValue triggerTime, string? nameOverride = null)
+    {
+        return new Cue
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = nameOverride ?? source.Name,
+            Memo = source.Memo,
+            TriggerTime = triggerTime,
+            OscAddress = source.OscAddress,
+            Arguments = source.Arguments.ToList(),
+            TargetHostIds = source.TargetHostIds.ToList(),
+            IsEnabled = source.IsEnabled,
+            SendTriggerTimeAsSeconds = source.SendTriggerTimeAsSeconds,
+            CueOffset = source.CueOffset,
+        };
+    }
+
+    private void AddCueInternal(Cue cue)
+    {
+        _cueManager.AddCue(cue);
+        CueItems.Add(new CueItemViewModel(cue));
     }
 
     [RelayCommand]
