@@ -51,6 +51,9 @@ internal class StubProjectService : IProjectService
 
     public IReadOnlyList<string> GetRecentProjects() => _recentProjects.AsReadOnly();
 
+    public BackgroundSettings LoadBackgroundSettings() => new();
+    public void SaveBackgroundSettings(BackgroundSettings settings) { }
+
     public void SimulateUnsavedChanges(bool value)
     {
         SetHasUnsavedChanges(value);

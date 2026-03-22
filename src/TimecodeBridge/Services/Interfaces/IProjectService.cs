@@ -12,5 +12,8 @@ public interface IProjectService
     void MarkAsChanged();
     IReadOnlyList<string> GetRecentProjects();
 
+    BackgroundSettings LoadBackgroundSettings();
+    void SaveBackgroundSettings(BackgroundSettings settings);
+
     event EventHandler<EventArgs> UnsavedChangesStatusChanged;
 }

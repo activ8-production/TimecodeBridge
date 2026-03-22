@@ -136,8 +136,60 @@ public class ProjectService : IProjectService
         }
     }
 
+    public BackgroundSettings LoadBackgroundSettings()
+    {
+        try
+        {
+            if (File.Exists(_settingsFilePath))
+            {
+                var json = File.ReadAllText(_settingsFilePath);
+                var settings = JsonSerializer.Deserialize<AppSettings>(json);
+                return settings?.BackgroundSettings ?? new BackgroundSettings();
+            }
+        }
+        catch
+        {
+            // Best-effort
+        }
+        return new BackgroundSettings();
+    }
+
+    public void SaveBackgroundSettings(BackgroundSettings backgroundSettings)
+    {
+        try
+        {
+            AppSettings settings;
+            if (File.Exists(_settingsFilePath))
+            {
+                var json = File.ReadAllText(_settingsFilePath);
+                settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            }
+            else
+            {
+                settings = new AppSettings();
+            }
+
+            settings.BackgroundSettings = backgroundSettings;
+            settings.RecentProjects = _recentProjects;
+
+            var directory = Path.GetDirectoryName(_settingsFilePath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            var outputJson = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(_settingsFilePath, outputJson);
+        }
+        catch
+        {
+            // Best-effort
+        }
+    }
+
     private class AppSettings
     {
         public List<string> RecentProjects { get; set; } = [];
+        public BackgroundSettings BackgroundSettings { get; set; } = new();
     }
 }

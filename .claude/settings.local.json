@@ -39,7 +39,11 @@
       "Bash(taskkill //IM TimecodeBridge.exe //F)",
       "Bash(find src:*)",
       "Bash(find /d/PlayGorund/Project-TimecodeBridge/src/TimecodeBridge -name \"*.cs\" ! -path \"*/obj/*\" ! -path \"*/bin/*\" -exec wc -l {} +)",
-      "Bash(sort -k2 -rn)"
+      "Bash(sort -k2 -rn)",
+      "Bash(tasklist)",
+      "Bash(find /d/PlayGorund/Project-TimecodeBridge/tests -type f -name *.cs -not -path */obj/* -not -path */bin/*)",
+      "Bash(git commit:*)",
+      "Bash(git add:*)"
     ]
   }
 }

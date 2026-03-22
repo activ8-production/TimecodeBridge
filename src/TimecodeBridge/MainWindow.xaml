@@ -40,13 +40,65 @@
                     </MenuItem.ItemContainerStyle>
                 </MenuItem>
             </MenuItem>
+            <MenuItem Header="表示(_V)">
+                <MenuItem Header="背景画像を設定..." x:Name="SetBackgroundMenuItem" Click="SetBackgroundMenuItem_Click" />
+                <MenuItem Header="背景画像をクリア" Command="{Binding ClearBackgroundImageCommand}" />
+                <Separator />
+                <MenuItem Header="暗さ調整">
+                    <MenuItem.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel />
+                        </ItemsPanelTemplate>
+                    </MenuItem.ItemsPanel>
+                    <StackPanel Orientation="Horizontal" Margin="4">
+                        <TextBlock Text="明るい" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource PrimaryForegroundBrush}" Margin="0,0,8,0" />
+                        <Slider x:Name="DarkenSlider" Width="150" Minimum="0" Maximum="0.95"
+                                Value="{Binding BackgroundDarkenOpacity, Mode=TwoWay}"
+                                VerticalAlignment="Center" />
+                        <TextBlock Text="暗い" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource PrimaryForegroundBrush}" Margin="8,0,0,0" />
+                    </StackPanel>
+                </MenuItem>
+            </MenuItem>
         </Menu>
 
-        <!-- Row 1: Timecode Display + Waveform -->
-        <StackPanel Grid.Row="1">
-            <views:TimecodeDisplayView x:Name="TimecodeDisplay" />
-            <views:AudioWaveformView x:Name="AudioWaveform" Height="70" />
-        </StackPanel>
+        <!-- Row 1: Timecode Display + Background Image Area -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Timecode + Waveform -->
+            <StackPanel Grid.Column="0">
+                <views:TimecodeDisplayView x:Name="TimecodeDisplay" />
+                <views:AudioWaveformView x:Name="AudioWaveform" Height="70" />
+            </StackPanel>
+
+            <!-- Right: 16:9 Background Image Area -->
+            <Border Grid.Column="1" Margin="2"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    Background="#181828" CornerRadius="3"
+                    Visibility="{Binding BackgroundImagePath, Converter={StaticResource NullToCollapsedConverter}}">
+                <Grid Width="448" ClipToBounds="True">
+                    <!-- 16:9 aspect ratio: 448 * 9/16 = 252 -->
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="252" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Image -->
+                    <Image x:Name="BackgroundImage"
+                           Stretch="UniformToFill"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center" />
+
+                    <!-- Darken overlay -->
+                    <Rectangle Fill="#000000"
+                               Opacity="{Binding BackgroundDarkenOpacity}" />
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- Row 2: CueList + Right Side Panel -->
         <Grid Grid.Row="2">

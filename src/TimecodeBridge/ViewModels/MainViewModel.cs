@@ -26,6 +26,12 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private IReadOnlyList<string> _recentProjects = [];
 
+    [ObservableProperty]
+    private string? _backgroundImagePath;
+
+    [ObservableProperty]
+    private double _backgroundDarkenOpacity = 0.7;
+
     public MainViewModel(
         IProjectService projectService,
         ICueManager cueManager,
@@ -47,6 +53,11 @@ public partial class MainViewModel : ObservableObject
 
         RecentProjects = _projectService.GetRecentProjects();
         _projectService.UnsavedChangesStatusChanged += OnUnsavedChangesStatusChanged;
+
+        // Load background settings
+        var bg = _projectService.LoadBackgroundSettings();
+        _backgroundImagePath = bg.ImagePath;
+        _backgroundDarkenOpacity = bg.DarkenOpacity;
     }
 
     [RelayCommand]
@@ -169,6 +180,30 @@ public partial class MainViewModel : ObservableObject
     {
         HasUnsavedChanges = _projectService.HasUnsavedChanges;
         UpdateTitle();
+    }
+
+    partial void OnBackgroundImagePathChanged(string? value) => SaveBackgroundSettings();
+    partial void OnBackgroundDarkenOpacityChanged(double value) => SaveBackgroundSettings();
+
+    [RelayCommand]
+    private void SetBackgroundImage(string filePath)
+    {
+        BackgroundImagePath = filePath;
+    }
+
+    [RelayCommand]
+    private void ClearBackgroundImage()
+    {
+        BackgroundImagePath = null;
+    }
+
+    private void SaveBackgroundSettings()
+    {
+        _projectService.SaveBackgroundSettings(new BackgroundSettings
+        {
+            ImagePath = BackgroundImagePath,
+            DarkenOpacity = BackgroundDarkenOpacity,
+        });
     }
 
     private void UpdateTitle()
