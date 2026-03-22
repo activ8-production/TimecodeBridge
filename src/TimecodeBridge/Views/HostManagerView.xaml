@@ -6,108 +6,122 @@
              xmlns:vm="clr-namespace:TimecodeBridge.ViewModels"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:HostManagerViewModel, IsDesignTimeCreatable=False}"
-             Background="{DynamicResource PrimaryBackgroundBrush}"
+             Background="Transparent"
              Foreground="{DynamicResource PrimaryForegroundBrush}">
 
-    <Grid Margin="12">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
+    <Border Background="{DynamicResource CardBackgroundBrush}"
+            BorderBrush="{DynamicResource BorderSubtleBrush}"
+            BorderThickness="1" CornerRadius="8" Padding="0">
+        <Grid Margin="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <TextBlock Grid.Row="0"
-                   Text="ホスト管理"
-                   FontSize="16"
-                   FontWeight="SemiBold"
-                   Margin="0,0,0,8" />
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                <Border Width="3" Height="14" Background="{DynamicResource AccentBrush}"
+                        CornerRadius="2" Margin="0,0,8,0" VerticalAlignment="Center" />
+                <TextBlock Text="ホスト管理"
+                           FontSize="13"
+                           FontWeight="SemiBold" />
+            </StackPanel>
 
-        <!-- Host List -->
-        <ListView Grid.Row="1"
-                  ItemsSource="{Binding Hosts}"
-                  MaxHeight="200"
-                  BorderThickness="1"
-                  BorderBrush="{DynamicResource BorderBrush}">
-            <ListView.ItemTemplate>
-                <DataTemplate>
-                    <Grid Margin="4,2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="120" />
-                            <ColumnDefinition Width="60" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+            <!-- Host List -->
+            <ListView Grid.Row="1"
+                      ItemsSource="{Binding Hosts}"
+                      MaxHeight="200"
+                      BorderThickness="1"
+                      BorderBrush="{DynamicResource BorderSubtleBrush}"
+                      Background="Transparent">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="4,3">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="120" />
+                                <ColumnDefinition Width="60" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
 
-                        <!-- Name -->
-                        <TextBlock Grid.Column="0"
-                                   Text="{Binding Name}"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,8,0" />
+                            <!-- Name -->
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding Name}"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,8,0"
+                                       FontWeight="Medium" />
 
-                        <!-- IP Address -->
-                        <TextBlock Grid.Column="1"
-                                   Text="{Binding IpAddress}"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource SecondaryForegroundBrush}"
-                                   Margin="0,0,8,0" />
+                            <!-- IP Address -->
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding IpAddress}"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource SecondaryForegroundBrush}"
+                                       FontFamily="Consolas" FontSize="12"
+                                       Margin="0,0,8,0" />
 
-                        <!-- Port -->
-                        <TextBlock Grid.Column="2"
-                                   Text="{Binding Port}"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource SecondaryForegroundBrush}"
-                                   Margin="0,0,8,0" />
+                            <!-- Port -->
+                            <TextBlock Grid.Column="2"
+                                       Text="{Binding Port}"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource SecondaryForegroundBrush}"
+                                       FontFamily="Consolas" FontSize="12"
+                                       Margin="0,0,8,0" />
 
-                        <!-- Enabled CheckBox -->
-                        <CheckBox Grid.Column="3"
-                                  IsChecked="{Binding IsEnabled, Mode=OneWay}"
-                                  Content="有効"
-                                  VerticalAlignment="Center"
-                                  Margin="0,0,8,0"
-                                  Command="{Binding DataContext.ToggleHostEnabledCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
-                                  CommandParameter="{Binding Id}" />
+                            <!-- Enabled CheckBox -->
+                            <CheckBox Grid.Column="3"
+                                      IsChecked="{Binding IsEnabled, Mode=OneWay}"
+                                      Content="有効"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,8,0"
+                                      Command="{Binding DataContext.ToggleHostEnabledCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                      CommandParameter="{Binding Id}" />
 
-                        <!-- Edit Button -->
-                        <Button Grid.Column="4"
-                                Content="編集"
-                                Padding="8,4"
-                                Margin="0,0,4,0"
-                                VerticalAlignment="Center"
-                                Command="{Binding DataContext.EditHostCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
-                                CommandParameter="{Binding Id}" />
+                            <!-- Edit Button -->
+                            <Button Grid.Column="4"
+                                    Content="編集"
+                                    Padding="8,4"
+                                    Margin="0,0,4,0"
+                                    FontSize="11"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding DataContext.EditHostCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                    CommandParameter="{Binding Id}" />
 
-                        <!-- Ping Button -->
-                        <Button Grid.Column="5"
-                                Content="Ping"
-                                Padding="8,4"
-                                Margin="0,0,4,0"
-                                VerticalAlignment="Center"
-                                Command="{Binding DataContext.PingHostCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
-                                CommandParameter="{Binding Id}" />
+                            <!-- Ping Button -->
+                            <Button Grid.Column="5"
+                                    Content="Ping"
+                                    Padding="8,4"
+                                    Margin="0,0,4,0"
+                                    FontSize="11"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding DataContext.PingHostCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                    CommandParameter="{Binding Id}" />
 
-                        <!-- Remove Button -->
-                        <Button Grid.Column="6"
-                                Content="削除"
-                                Padding="8,4"
-                                VerticalAlignment="Center"
-                                Command="{Binding DataContext.RemoveHostCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
-                                CommandParameter="{Binding Id}" />
-                    </Grid>
-                </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
+                            <!-- Remove Button -->
+                            <Button Grid.Column="6"
+                                    Content="削除"
+                                    Padding="8,4"
+                                    FontSize="11"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding DataContext.RemoveHostCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                    CommandParameter="{Binding Id}" />
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
 
-        <!-- Add Host Button -->
-        <StackPanel Grid.Row="2"
-                    Orientation="Horizontal"
-                    Margin="0,8,0,0">
-            <Button Content="+ ホスト追加"
-                    Command="{Binding AddHostCommand}"
-                    Padding="12,6" />
-        </StackPanel>
-    </Grid>
+            <!-- Add Host Button -->
+            <StackPanel Grid.Row="2"
+                        Orientation="Horizontal"
+                        Margin="0,10,0,0">
+                <Button Content="+ ホスト追加"
+                        Command="{Binding AddHostCommand}"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Padding="14,7" FontSize="12" />
+            </StackPanel>
+        </Grid>
+    </Border>
 </UserControl>

@@ -87,6 +87,7 @@ internal class StubCueManagerForMain : ICueManager
     public void SetCueEnabled(string cueId, bool enabled) { }
     public void ManualTrigger(string cueId) { }
 
+
     public void ClearAll()
     {
         _cues.Clear();

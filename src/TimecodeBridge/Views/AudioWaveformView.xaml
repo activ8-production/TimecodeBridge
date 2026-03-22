@@ -6,10 +6,11 @@
              xmlns:local="clr-namespace:TimecodeBridge.Views"
              xmlns:converters="clr-namespace:TimecodeBridge.Converters"
              mc:Ignorable="d"
-             d:DesignHeight="80" d:DesignWidth="400">
-    <Border Background="{DynamicResource SecondaryBackgroundBrush}"
-            BorderBrush="{DynamicResource BorderBrush}"
-            BorderThickness="1" Margin="2" Padding="8,4">
+             d:DesignHeight="80" d:DesignWidth="400"
+             Background="Transparent">
+    <Border Background="{DynamicResource CardBackgroundBrush}"
+            BorderBrush="{DynamicResource BorderSubtleBrush}"
+            BorderThickness="1" Margin="0,0,0,0" Padding="10,4" CornerRadius="8">
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -18,20 +19,20 @@
             </Grid.ColumnDefinitions>
 
             <!-- Label -->
-            <Border Grid.Column="0" Background="#3A3A50" CornerRadius="3"
-                    Padding="8,2" Margin="0,0,10,0" VerticalAlignment="Center">
-                <TextBlock Text="WAVE" FontFamily="Consolas" FontSize="12"
-                           FontWeight="Bold" Foreground="#60C060" />
+            <Border Grid.Column="0" Background="{DynamicResource AccentSubtleBrush}" CornerRadius="4"
+                    Padding="10,3" Margin="0,0,10,0" VerticalAlignment="Center">
+                <TextBlock Text="WAVE" FontFamily="Consolas" FontSize="11"
+                           FontWeight="Bold" Foreground="#4ADE80" />
             </Border>
 
             <!-- Waveform -->
-            <Border Grid.Column="1" Background="#181828" CornerRadius="3" ClipToBounds="True">
+            <Border Grid.Column="1" Background="#0C0C18" CornerRadius="6" ClipToBounds="True">
                 <Canvas x:Name="WaveformCanvas">
                     <!-- Center line -->
                     <Line X1="0" X2="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}"
                           Y1="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Canvas}, Converter={x:Static converters:HalfConverter.Instance}}"
                           Y2="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Canvas}, Converter={x:Static converters:HalfConverter.Instance}}"
-                          Stroke="#303050" StrokeThickness="1" />
+                          Stroke="#1A1A30" StrokeThickness="1" />
                     <!-- Waveform polyline rendered in code-behind -->
                     <Polyline x:Name="WaveformLine"
                               Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.2" />
@@ -40,15 +41,15 @@
 
             <!-- Peak meter -->
             <StackPanel Grid.Column="2" Orientation="Vertical" VerticalAlignment="Center"
-                        Margin="10,0,0,0" Width="30">
-                <Border Background="#181828" CornerRadius="2" Height="50">
+                        Margin="10,0,0,0" Width="28">
+                <Border Background="#0C0C18" CornerRadius="4" Height="46">
                     <Grid>
                         <Border x:Name="PeakBar" Background="{DynamicResource AccentBrush}"
-                                CornerRadius="2" VerticalAlignment="Bottom" />
+                                CornerRadius="4" VerticalAlignment="Bottom" />
                     </Grid>
                 </Border>
                 <TextBlock Text="dB" FontSize="9" HorizontalAlignment="Center"
-                           Foreground="{DynamicResource SecondaryForegroundBrush}" Margin="0,2,0,0" />
+                           Foreground="{DynamicResource SecondaryForegroundBrush}" Margin="0,3,0,0" />
             </StackPanel>
         </Grid>
     </Border>

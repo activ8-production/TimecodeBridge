@@ -335,6 +335,7 @@ public class CueListViewModelTests
 
         public void ManualTrigger(string cueId) => ManualTriggerCalls.Add(cueId);
 
+
         public event EventHandler<CueTriggeredEventArgs>? CueTriggered;
 
         internal void SimulateCueTriggered(Cue cue, TimecodeValue triggerTimecode, bool isManual) =>

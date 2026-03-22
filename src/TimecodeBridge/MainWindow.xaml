@@ -9,14 +9,13 @@
         Title="{Binding Title}"
         Height="768" Width="1200"
         MinHeight="600" MinWidth="900"
-        WindowStartupLocation="CenterScreen">
-    <Grid>
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource PrimaryBackgroundBrush}">
+    <Grid Background="{DynamicResource PrimaryBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="180" />
+            <RowDefinition Height="3*" />
+            <RowDefinition Height="2*" />
         </Grid.RowDefinitions>
 
         <!-- Row 0: Menu Bar -->
@@ -63,102 +62,99 @@
             </MenuItem>
         </Menu>
 
-        <!-- Row 1: Timecode Display + Background Image Area -->
-        <Grid Grid.Row="1">
+        <!-- Row 1: CueList (left) + HostManager / RelayControl / BackgroundImage (right) -->
+        <Grid Grid.Row="1" Margin="4,4,4,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="4*" />
                 <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <!-- Left: Timecode + Waveform -->
-            <StackPanel Grid.Column="0">
-                <views:TimecodeDisplayView x:Name="TimecodeDisplay" />
-                <views:AudioWaveformView x:Name="AudioWaveform" Height="70" />
-            </StackPanel>
-
-            <!-- Right: 16:9 Background Image Area -->
-            <Border Grid.Column="1" Margin="2"
-                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                    Background="#181828" CornerRadius="3"
-                    Visibility="{Binding BackgroundImagePath, Converter={StaticResource NullToCollapsedConverter}}">
-                <Grid Width="448" ClipToBounds="True">
-                    <!-- 16:9 aspect ratio: 448 * 9/16 = 252 -->
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="252" />
-                    </Grid.RowDefinitions>
-
-                    <!-- Image -->
-                    <Image x:Name="BackgroundImage"
-                           Stretch="UniformToFill"
-                           HorizontalAlignment="Center"
-                           VerticalAlignment="Center" />
-
-                    <!-- Darken overlay -->
-                    <Rectangle Fill="#000000"
-                               Opacity="{Binding BackgroundDarkenOpacity}" />
-                </Grid>
-            </Border>
-        </Grid>
-
-        <!-- Row 2: CueList + Right Side Panel -->
-        <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="3*" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="2*" />
             </Grid.ColumnDefinitions>
 
-            <!-- CueList -->
+            <!-- Left: CueList -->
             <views:CueListView Grid.Column="0" x:Name="CueList" />
 
             <!-- Splitter -->
-            <GridSplitter Grid.Column="1" Width="4"
-                          Background="{DynamicResource BorderBrush}"
+            <GridSplitter Grid.Column="1" Width="3"
                           HorizontalAlignment="Center" VerticalAlignment="Stretch" />
 
-            <!-- Right Side Panel: HostManager + RelayControl -->
-            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <!-- Right: HostManager + RelayControl + Background Image -->
+            <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Background="Transparent" Margin="4,0,0,0">
                 <StackPanel>
-                    <!-- HostManagerView -->
-                    <views:HostManagerView x:Name="HostManager" Margin="2" />
+                    <views:HostManagerView x:Name="HostManager" Margin="0,0,0,4" />
+                    <views:RelayControlView x:Name="RelayControl" Margin="0,0,0,4" />
 
-                    <!-- RelayControlView -->
-                    <views:RelayControlView x:Name="RelayControl" Margin="2" />
+                    <!-- Background Image (compact) -->
+                    <Border Margin="0,0,0,4"
+                            BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1"
+                            Background="{DynamicResource CardBackgroundBrush}" CornerRadius="8"
+                            Visibility="{Binding BackgroundImagePath, Converter={StaticResource NullToCollapsedConverter}}">
+                        <Grid ClipToBounds="True">
+                            <Image x:Name="BackgroundImage"
+                                   Stretch="UniformToFill"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   MaxHeight="200" />
+                            <Rectangle Fill="#000000"
+                                       Opacity="{Binding BackgroundDarkenOpacity}"
+                                       RadiusX="7" RadiusY="7" />
+                        </Grid>
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
         </Grid>
 
-        <!-- Row 3: Splitter -->
-        <GridSplitter Grid.Row="3" Height="4"
-                      Background="{DynamicResource BorderBrush}"
-                      HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+        <!-- Row 2: TC + Waveform (left) | Log (right) -->
+        <Grid Grid.Row="2" Margin="4,4,4,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="2*" />
+            </Grid.ColumnDefinitions>
 
-        <!-- Row 4: Log Panel -->
-        <Border Grid.Row="4" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="2">
-            <Grid>
+            <!-- Left: Timecode + Waveform (stretch to fill row height) -->
+            <Grid Grid.Column="0" Margin="0,0,4,0">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <DockPanel Grid.Row="0" Margin="8,4">
-                    <TextBlock Text="ログ" FontWeight="Bold"
-                               Foreground="{DynamicResource PrimaryForegroundBrush}"
-                               VerticalAlignment="Center" />
-                    <Button Content="クリア" DockPanel.Dock="Right" HorizontalAlignment="Right"
-                            Padding="8,2" FontSize="11"
-                            x:Name="ClearLogButton" />
-                </DockPanel>
-                <ListView Grid.Row="1" x:Name="LogListView"
-                          Background="{DynamicResource SecondaryBackgroundBrush}"
-                          BorderThickness="0">
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Message}" FontFamily="Consolas" FontSize="11"
-                                       Foreground="{DynamicResource PrimaryForegroundBrush}" />
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
+                <views:TimecodeDisplayView Grid.Row="0" x:Name="TimecodeDisplay" />
+                <views:AudioWaveformView Grid.Row="1" x:Name="AudioWaveform" Height="46" />
             </Grid>
-        </Border>
+
+            <!-- Right: Log Panel -->
+            <Border Grid.Column="1" BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1"
+                    CornerRadius="8" Background="{DynamicResource CardBackgroundBrush}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <DockPanel Grid.Row="0" Margin="12,8,12,4">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="3" Height="14" Background="{DynamicResource AccentBrush}"
+                                    CornerRadius="2" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <TextBlock Text="ログ" FontWeight="SemiBold" FontSize="13"
+                                       Foreground="{DynamicResource PrimaryForegroundBrush}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Button Content="クリア" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                Padding="10,4" FontSize="11"
+                                x:Name="ClearLogButton" />
+                    </DockPanel>
+                    <ListView Grid.Row="1" x:Name="LogListView"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              Margin="4,0,4,4">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Message}" FontFamily="Consolas" FontSize="11"
+                                           Foreground="{DynamicResource SecondaryForegroundBrush}" />
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

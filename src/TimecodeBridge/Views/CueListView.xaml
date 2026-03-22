@@ -4,20 +4,11 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
-             d:DesignHeight="400" d:DesignWidth="600">
-    <UserControl.Resources>
-        <Style x:Key="CueRowBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Padding" Value="4,2" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsNextCue}" Value="True">
-                    <Setter Property="Background" Value="#2A3A5A8C" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-    </UserControl.Resources>
+             d:DesignHeight="400" d:DesignWidth="600"
+             Background="Transparent">
 
-    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="2">
+    <Border BorderBrush="{DynamicResource BorderSubtleBrush}" BorderThickness="1"
+            CornerRadius="8" Background="{DynamicResource CardBackgroundBrush}" Margin="0,0,4,0">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -25,45 +16,51 @@
             </Grid.RowDefinitions>
 
             <!-- Toolbar -->
-            <DockPanel Grid.Row="0" Margin="8,4">
-                <TextBlock Text="キューリスト" FontWeight="Bold"
-                           Foreground="{DynamicResource PrimaryForegroundBrush}"
-                           VerticalAlignment="Center" />
+            <DockPanel Grid.Row="0" Margin="12,10,12,6">
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="3" Height="14" Background="{DynamicResource AccentBrush}"
+                            CornerRadius="2" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <TextBlock Text="キューリスト" FontWeight="SemiBold" FontSize="13"
+                               Foreground="{DynamicResource PrimaryForegroundBrush}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                     <!-- Trigger Window -->
                     <TextBlock Text="判定幅:" VerticalAlignment="Center" Margin="0,0,4,0"
-                               Foreground="{DynamicResource SecondaryForegroundBrush}" FontSize="12" />
+                               Foreground="{DynamicResource SecondaryForegroundBrush}" FontSize="11" />
                     <TextBox Text="{Binding TriggerWindowFrames, UpdateSourceTrigger=PropertyChanged}"
-                             Width="36" FontSize="12" VerticalAlignment="Center"
-                             HorizontalContentAlignment="Center" Padding="2,2" />
-                    <TextBlock Text="f" VerticalAlignment="Center" Margin="2,0,12,0"
-                               Foreground="{DynamicResource SecondaryForegroundBrush}" FontSize="12" />
-                    <Button Content="＋ 追加" Padding="10,3" Margin="4,0"
-                            Command="{Binding AddCueCommand}" FontSize="12" />
-                    <Button Content="編集" Padding="10,3" Margin="4,0"
+                             Width="36" FontSize="11" VerticalAlignment="Center"
+                             HorizontalContentAlignment="Center" Padding="4,3" />
+                    <TextBlock Text="f" VerticalAlignment="Center" Margin="3,0,16,0"
+                               Foreground="{DynamicResource SecondaryForegroundBrush}" FontSize="11" />
+                    <Button Content="＋ 追加" Padding="10,4" Margin="3,0"
+                            Command="{Binding AddCueCommand}" FontSize="11"
+                            Style="{StaticResource AccentButtonStyle}" />
+                    <Button Content="編集" Padding="10,4" Margin="3,0"
                             Command="{Binding EditCueCommand}"
                             CommandParameter="{Binding SelectedItem.Id, ElementName=CueDataGrid}"
-                            FontSize="12" />
-                    <Button Content="複製" Padding="10,3" Margin="4,0"
+                            FontSize="11" />
+                    <Button Content="複製" Padding="10,4" Margin="3,0"
                             Command="{Binding DuplicateCueCommand}"
                             CommandParameter="{Binding SelectedItem.Id, ElementName=CueDataGrid}"
-                            FontSize="12" />
-                    <Button Content="連続複製" Padding="10,3" Margin="4,0"
+                            FontSize="11" />
+                    <Button Content="連続複製" Padding="10,4" Margin="3,0"
                             Command="{Binding BatchDuplicateCueCommand}"
                             CommandParameter="{Binding SelectedItem.Id, ElementName=CueDataGrid}"
-                            FontSize="12" />
-                    <Button Content="－ 削除" Padding="10,3" Margin="4,0"
+                            FontSize="11" />
+                    <Button Content="－ 削除" Padding="10,4" Margin="3,0"
                             Command="{Binding RemoveCueCommand}"
                             CommandParameter="{Binding SelectedItem.Id, ElementName=CueDataGrid}"
-                            FontSize="12" />
+                            FontSize="11" />
                 </StackPanel>
             </DockPanel>
 
             <!-- Cue List -->
             <ListView Grid.Row="1" x:Name="CueDataGrid"
                       ItemsSource="{Binding CueItems}"
-                      Background="{DynamicResource SecondaryBackgroundBrush}"
+                      Background="Transparent"
                       BorderThickness="0"
+                      Margin="4,0,4,4"
                       ScrollViewer.HorizontalScrollBarVisibility="Auto">
                 <ListView.View>
                     <GridView>
@@ -115,7 +112,7 @@
                         <GridViewColumn Header="手動" Width="70">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Button Content="▶" Padding="6,1" FontSize="11"
+                                    <Button Content="▶" Padding="8,3" FontSize="11"
                                             Command="{Binding DataContext.ManualTriggerCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
                                             CommandParameter="{Binding Id}" />
                                 </DataTemplate>
@@ -129,22 +126,36 @@
                     <Style TargetType="ListViewItem">
                         <EventSetter Event="MouseDoubleClick" Handler="CueItem_MouseDoubleClick" />
                         <Setter Property="Foreground" Value="{DynamicResource PrimaryForegroundBrush}" />
-                        <Setter Property="Padding" Value="2" />
+                        <Setter Property="Padding" Value="4,3" />
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="ListViewItem">
-                                    <Border x:Name="RowBorder" Background="Transparent"
-                                            Padding="{TemplateBinding Padding}" BorderThickness="0">
-                                        <GridViewRowPresenter />
-                                    </Border>
+                                    <ControlTemplate.Resources>
+                                        <Storyboard x:Key="FlashIn">
+                                            <DoubleAnimation Storyboard.TargetName="FlashOverlay"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             From="0.7" To="0" Duration="0:0:0.6" />
+                                        </Storyboard>
+                                    </ControlTemplate.Resources>
+                                    <Grid>
+                                        <Border x:Name="RowBorder" Background="Transparent"
+                                                Padding="{TemplateBinding Padding}" BorderThickness="0,0,0,1"
+                                                BorderBrush="{DynamicResource BorderSubtleBrush}">
+                                            <GridViewRowPresenter />
+                                        </Border>
+                                        <!-- Flash overlay -->
+                                        <Border x:Name="FlashOverlay" Background="#DD3333"
+                                                Opacity="0" IsHitTestVisible="False" />
+                                    </Grid>
                                     <ControlTemplate.Triggers>
                                         <DataTrigger Binding="{Binding IsNextCue}" Value="True">
                                             <Setter TargetName="RowBorder" Property="Background"
                                                     Value="{DynamicResource SelectionBackgroundBrush}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsTriggered}" Value="True">
-                                            <Setter TargetName="RowBorder" Property="Background"
-                                                    Value="#5B9BD5" />
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard Storyboard="{StaticResource FlashIn}" />
+                                            </DataTrigger.EnterActions>
                                         </DataTrigger>
                                         <Trigger Property="IsMouseOver" Value="True">
                                             <Setter TargetName="RowBorder" Property="Background"

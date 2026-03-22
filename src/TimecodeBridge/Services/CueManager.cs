@@ -14,6 +14,7 @@ public class CueManager : ICueManager
     // Jitter never exceeds _highWaterMark, so it never causes re-triggers.
     private readonly HashSet<string> _firedCueIds = [];
     private TimecodeValue? _highWaterMark;
+    private TimecodeValue? _lastRawTimecode;
 
     public int TriggerWindowFrames { get; set; } = 3;
 
@@ -106,6 +107,22 @@ public class CueManager : ICueManager
     {
         var tc = e.OffsetTimecode;
         long tcOrd = tc.ToOrdinal();
+
+        // Detect offset change: if raw TC barely moved but offset TC jumped,
+        // the user changed the offset — reset high-water mark without triggering.
+        if (_lastRawTimecode is not null && _highWaterMark is not null)
+        {
+            long rawDelta = Math.Abs(e.RawTimecode.ToOrdinal() - _lastRawTimecode.Value.ToOrdinal());
+            long offsetDelta = Math.Abs(tcOrd - _highWaterMark.Value.ToOrdinal());
+            if (rawDelta <= TriggerWindowFrames && offsetDelta > TriggerWindowFrames)
+            {
+                // Offset changed while raw TC stayed roughly the same
+                _highWaterMark = tc;
+                _lastRawTimecode = e.RawTimecode;
+                return;
+            }
+        }
+        _lastRawTimecode = e.RawTimecode;
 
         if (_highWaterMark is null)
         {
