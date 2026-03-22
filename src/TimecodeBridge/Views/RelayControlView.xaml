@@ -1,0 +1,153 @@
+<UserControl x:Class="TimecodeBridge.Views.RelayControlView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:TimecodeBridge.ViewModels"
+             xmlns:models="clr-namespace:TimecodeBridge.Models"
+             xmlns:local="clr-namespace:TimecodeBridge.Views"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:RelayViewModel, IsDesignTimeCreatable=False}"
+             Background="{DynamicResource PrimaryBackgroundBrush}"
+             Foreground="{DynamicResource PrimaryForegroundBrush}">
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0"
+                   Text="リレー制御"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,12" />
+
+        <!-- OSC Address Pattern -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,12">
+            <TextBlock Text="OSC アドレスパターン"
+                       Margin="0,0,0,4"
+                       Foreground="{DynamicResource SecondaryForegroundBrush}" />
+            <TextBox Text="{Binding OscAddressPattern, UpdateSourceTrigger=PropertyChanged}"
+                     MaxWidth="300"
+                     HorizontalAlignment="Left" />
+        </StackPanel>
+
+        <!-- Continuous Mode -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,12">
+            <TextBlock Text="継続送信モード"
+                       Margin="0,0,0,4"
+                       Foreground="{DynamicResource SecondaryForegroundBrush}" />
+            <ToggleButton Content="{Binding IsContinuousEnabled, Converter={x:Static local:BoolToToggleLabelConverter.Instance}}"
+                          IsChecked="{Binding IsContinuousEnabled}"
+                          Padding="16,6"
+                          HorizontalAlignment="Left"
+                          x:Name="ContinuousToggle">
+                <ToggleButton.Style>
+                    <Style TargetType="ToggleButton">
+                        <Setter Property="Background" Value="{DynamicResource TertiaryBackgroundBrush}" />
+                        <Setter Property="Foreground" Value="{DynamicResource PrimaryForegroundBrush}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="Cursor" Value="Hand" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <Border Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                            CornerRadius="3"
+                                            Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ToggleButton.Style>
+            </ToggleButton>
+        </StackPanel>
+
+        <!-- Send Interval -->
+        <StackPanel Grid.Row="3" Margin="0,0,0,12">
+            <TextBlock Text="送信間隔"
+                       Margin="0,0,0,4"
+                       Foreground="{DynamicResource SecondaryForegroundBrush}" />
+            <StackPanel Orientation="Horizontal">
+                <ComboBox x:Name="IntervalModeCombo"
+                          SelectedIndex="0"
+                          Width="140"
+                          Margin="0,0,8,0">
+                    <ComboBoxItem Content="EveryFrame" />
+                    <ComboBoxItem Content="Custom" />
+                </ComboBox>
+                <TextBox Text="{Binding ContinuousInterval.IntervalMs, Mode=OneWay}"
+                         Width="80"
+                         IsEnabled="{Binding SelectedIndex, ElementName=IntervalModeCombo, Converter={x:Static local:IndexToBoolConverter.Instance}}" />
+                <TextBlock Text="ms"
+                           VerticalAlignment="Center"
+                           Margin="4,0,0,0"
+                           Foreground="{DynamicResource SecondaryForegroundBrush}" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Target Hosts -->
+        <StackPanel Grid.Row="4" Margin="0,0,0,12">
+            <TextBlock Text="送信先ホスト"
+                       Margin="0,0,0,4"
+                       Foreground="{DynamicResource SecondaryForegroundBrush}" />
+            <ItemsControl ItemsSource="{Binding HostSelections}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <CheckBox Content="{Binding Name}"
+                                  IsChecked="{Binding IsSelected}"
+                                  Margin="0,2"
+                                  Foreground="{DynamicResource PrimaryForegroundBrush}"
+                                  Checked="OnHostCheckChanged"
+                                  Unchecked="OnHostCheckChanged" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="(ホストが登録されていません)"
+                       Foreground="{DynamicResource SecondaryForegroundBrush}"
+                       FontSize="11"
+                       Margin="0,2,0,0">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HostSelections.Count}" Value="0">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </StackPanel>
+
+        <!-- One-Shot Trigger -->
+        <StackPanel Grid.Row="5" Margin="0,0,0,0">
+            <TextBlock Text="ワンショット送信"
+                       Margin="0,0,0,4"
+                       Foreground="{DynamicResource SecondaryForegroundBrush}" />
+            <Button Content="送信トリガー"
+                    Command="{Binding TriggerOneShotCommand}"
+                    Padding="16,6"
+                    HorizontalAlignment="Left" />
+        </StackPanel>
+    </Grid>
+</UserControl>

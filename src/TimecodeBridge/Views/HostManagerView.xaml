@@ -1,0 +1,113 @@
+<UserControl x:Class="TimecodeBridge.Views.HostManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:TimecodeBridge.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:HostManagerViewModel, IsDesignTimeCreatable=False}"
+             Background="{DynamicResource PrimaryBackgroundBrush}"
+             Foreground="{DynamicResource PrimaryForegroundBrush}">
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0"
+                   Text="ホスト管理"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,8" />
+
+        <!-- Host List -->
+        <ListView Grid.Row="1"
+                  ItemsSource="{Binding Hosts}"
+                  MaxHeight="200"
+                  BorderThickness="1"
+                  BorderBrush="{DynamicResource BorderBrush}">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Grid Margin="4,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="60" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Name -->
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding Name}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+
+                        <!-- IP Address -->
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding IpAddress}"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource SecondaryForegroundBrush}"
+                                   Margin="0,0,8,0" />
+
+                        <!-- Port -->
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding Port}"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource SecondaryForegroundBrush}"
+                                   Margin="0,0,8,0" />
+
+                        <!-- Enabled CheckBox -->
+                        <CheckBox Grid.Column="3"
+                                  IsChecked="{Binding IsEnabled, Mode=OneWay}"
+                                  Content="有効"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,8,0"
+                                  Command="{Binding DataContext.ToggleHostEnabledCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                  CommandParameter="{Binding Id}" />
+
+                        <!-- Edit Button -->
+                        <Button Grid.Column="4"
+                                Content="編集"
+                                Padding="8,4"
+                                Margin="0,0,4,0"
+                                VerticalAlignment="Center"
+                                Command="{Binding DataContext.EditHostCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                CommandParameter="{Binding Id}" />
+
+                        <!-- Ping Button -->
+                        <Button Grid.Column="5"
+                                Content="Ping"
+                                Padding="8,4"
+                                Margin="0,0,4,0"
+                                VerticalAlignment="Center"
+                                Command="{Binding DataContext.PingHostCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                CommandParameter="{Binding Id}" />
+
+                        <!-- Remove Button -->
+                        <Button Grid.Column="6"
+                                Content="削除"
+                                Padding="8,4"
+                                VerticalAlignment="Center"
+                                Command="{Binding DataContext.RemoveHostCommand, RelativeSource={RelativeSource AncestorType=ListView}}"
+                                CommandParameter="{Binding Id}" />
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <!-- Add Host Button -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    Margin="0,8,0,0">
+            <Button Content="+ ホスト追加"
+                    Command="{Binding AddHostCommand}"
+                    Padding="12,6" />
+        </StackPanel>
+    </Grid>
+</UserControl>

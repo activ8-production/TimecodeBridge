@@ -1,0 +1,177 @@
+<UserControl x:Class="TimecodeBridge.Views.TimecodeDisplayView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:models="clr-namespace:TimecodeBridge.Models"
+mc:Ignorable="d"
+             d:DesignHeight="200" d:DesignWidth="1000">
+    <UserControl.Resources>
+        <!-- Boolean to Brush converter for status indicator -->
+        <Style x:Key="StatusIndicatorStyle" TargetType="Ellipse">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Fill" Value="#808080" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsReceiving}" Value="True">
+                    <Setter Property="Fill" Value="#00CC00" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- LTC output indicator style -->
+        <Style x:Key="LtcOutputIndicatorStyle" TargetType="Ellipse">
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Height" Value="10" />
+            <Setter Property="Fill" Value="#808080" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsLtcOutputActive}" Value="True">
+                    <Setter Property="Fill" Value="#FF8C00" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource SecondaryBackgroundBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1" Margin="2" Padding="12,8">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Timecode displays -->
+            <StackPanel Grid.Column="0" Orientation="Vertical">
+                <!-- Raw Timecode -->
+                <DockPanel Margin="0,2">
+                    <Border DockPanel.Dock="Left" Background="#3A3A50" CornerRadius="3"
+                            Padding="8,2" Margin="0,0,10,0" VerticalAlignment="Center">
+                        <TextBlock Text="RAW" FontFamily="Consolas" FontSize="12"
+                                   FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                    </Border>
+                    <TextBlock Text="{Binding RawTimecodeDisplay, FallbackValue='00:00:00:00'}"
+                               FontFamily="Consolas" FontSize="42" FontWeight="Bold"
+                               Foreground="{DynamicResource PrimaryForegroundBrush}"
+                               VerticalAlignment="Center" />
+                </DockPanel>
+
+                <!-- Offset Timecode -->
+                <DockPanel Margin="0,2">
+                    <Border DockPanel.Dock="Left" Background="#3A3A50" CornerRadius="3"
+                            Padding="8,2" Margin="0,0,10,0" VerticalAlignment="Center">
+                        <TextBlock Text="OFFSET" FontFamily="Consolas" FontSize="12"
+                                   FontWeight="Bold" Foreground="#E0A040" />
+                    </Border>
+                    <TextBlock Text="{Binding OffsetTimecodeDisplay, FallbackValue='00:00:00:00'}"
+                               FontFamily="Consolas" FontSize="36"
+                               Foreground="#C0C0D0"
+                               VerticalAlignment="Center" />
+                </DockPanel>
+            </StackPanel>
+
+            <!-- Right: Controls -->
+            <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Top"
+                        MinWidth="280" Margin="20,0,0,0">
+
+                <!-- Source selection -->
+                <StackPanel Orientation="Horizontal" Margin="0,4">
+                    <TextBlock Text="ソース:" Foreground="{DynamicResource SecondaryForegroundBrush}"
+                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <RadioButton Content="LTC受信" GroupName="Source"
+                                 IsChecked="{Binding IsLtcMode}"
+                                 Foreground="{DynamicResource PrimaryForegroundBrush}"
+                                 Margin="0,0,12,0" VerticalAlignment="Center" />
+                    <RadioButton Content="内部生成" GroupName="Source"
+                                 IsChecked="{Binding IsGeneratorMode}"
+                                 Foreground="{DynamicResource PrimaryForegroundBrush}"
+                                 VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Status indicator -->
+                <StackPanel Orientation="Horizontal" Margin="0,4">
+                    <TextBlock Text="状態:" Foreground="{DynamicResource SecondaryForegroundBrush}"
+                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Ellipse Style="{StaticResource StatusIndicatorStyle}" Margin="0,0,8,0" />
+                    <TextBlock Text="{Binding StatusText, FallbackValue='停止'}"
+                               Foreground="{DynamicResource PrimaryForegroundBrush}"
+                               VerticalAlignment="Center" FontSize="13" />
+                </StackPanel>
+
+                <!-- LTC Input Device (visible in LTC mode) -->
+                <StackPanel Orientation="Horizontal" Margin="0,6"
+                            IsEnabled="{Binding IsLtcMode}">
+                    <TextBlock Text="入力デバイス:" Foreground="{DynamicResource SecondaryForegroundBrush}"
+                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <ComboBox ItemsSource="{Binding AudioDevices}"
+                              SelectedItem="{Binding SelectedDevice}"
+                              MinWidth="180" MaxWidth="300" />
+                    <Button Content="↻" Command="{Binding RefreshAudioDevicesCommand}"
+                            Padding="6,2" Margin="4,0,0,0" ToolTip="デバイス一覧を更新"
+                            FontSize="14" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Generator Controls (visible in Generator mode) -->
+                <StackPanel IsEnabled="{Binding IsGeneratorMode}">
+                    <!-- Frame Rate -->
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="フレームレート:" Foreground="{DynamicResource SecondaryForegroundBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox ItemsSource="{Binding AvailableFrameRates}"
+                                  SelectedItem="{Binding GeneratorFrameRate}"
+                                  MinWidth="100" />
+                    </StackPanel>
+
+                    <!-- Start Time -->
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="開始時間:" Foreground="{DynamicResource SecondaryForegroundBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBox Text="{Binding GeneratorStartTime, UpdateSourceTrigger=LostFocus}"
+                                 Width="120" FontFamily="Consolas"
+                                 ToolTip="HH:MM:SS:FF 形式" />
+                    </StackPanel>
+
+                    <!-- Output Device -->
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="LTC出力:" Foreground="{DynamicResource SecondaryForegroundBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <ComboBox ItemsSource="{Binding OutputDevices}"
+                                  SelectedItem="{Binding SelectedOutputDevice}"
+                                  MinWidth="180" MaxWidth="300" />
+                        <Ellipse Style="{StaticResource LtcOutputIndicatorStyle}" Margin="8,0,0,0"
+                                 VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Volume -->
+                    <StackPanel Orientation="Horizontal" Margin="0,4">
+                        <TextBlock Text="音量:" Foreground="{DynamicResource SecondaryForegroundBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <Slider Value="{Binding OutputVolumeLevel}" Minimum="0" Maximum="1"
+                                Width="120" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Generator buttons -->
+                    <StackPanel Orientation="Horizontal" Margin="0,6">
+                        <Button Content="▶ 開始" Command="{Binding StartGeneratorCommand}"
+                                Padding="8,4" Margin="0,0,6,0" />
+                        <Button Content="■ 停止" Command="{Binding StopGeneratorCommand}"
+                                Padding="8,4" Margin="0,0,6,0" />
+                        <Button Content="↺ リセット" Command="{Binding ResetGeneratorCommand}"
+                                Padding="8,4" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Offset input -->
+                <StackPanel Orientation="Horizontal" Margin="0,6">
+                    <TextBlock Text="オフセット:" Foreground="{DynamicResource SecondaryForegroundBrush}"
+                               VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBox x:Name="OffsetInput" Width="140" FontFamily="Consolas"
+                             Text="{Binding OffsetText, UpdateSourceTrigger=LostFocus}"
+                             ToolTip="±HH:MM:SS:FF 形式でオフセットを入力" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>
