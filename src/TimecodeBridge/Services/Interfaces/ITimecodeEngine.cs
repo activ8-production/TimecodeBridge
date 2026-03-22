@@ -10,6 +10,8 @@ public interface ITimecodeEngine
     FrameRate FrameRate { get; }
     TimecodeSourceType ActiveSource { get; }
     bool IsReceiving { get; }
+    double FreerunDurationSeconds { get; set; }
+    bool IsFreerunning { get; }
 
     void StartLtc(string audioDeviceId, bool isLoopback = false);
     void StartGenerator(GeneratorSettings settings);

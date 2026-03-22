@@ -101,6 +101,8 @@ internal class StubTimecodeEngineForHostMgr : ITimecodeEngine
     public FrameRate FrameRate { get; set; } = FrameRate.Fps30;
     public TimecodeSourceType ActiveSource { get; set; }
     public bool IsReceiving { get; set; }
+    public double FreerunDurationSeconds { get; set; }
+    public bool IsFreerunning => false;
 
     public void StartLtc(string audioDeviceId, bool isLoopback = false) { }
     public void Stop() { }

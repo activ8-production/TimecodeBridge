@@ -27,6 +27,12 @@ public class TimecodeEngine : ITimecodeEngine, IDisposable
     private LtcEncoder? _ltcEncoder;
     private WasapiOut? _wasapiOut;
 
+    // Freerun state
+    private double _freerunDurationSeconds;
+    private volatile bool _isFreerunning;
+    private CancellationTokenSource? _freerunCts;
+    private Timer? _freerunExpiryTimer;
+
     // Thread-safe state
     private volatile bool _isReceiving;
     private volatile bool _disposed;
@@ -60,6 +66,14 @@ public class TimecodeEngine : ITimecodeEngine, IDisposable
     }
 
     public bool IsReceiving => _isReceiving;
+
+    public double FreerunDurationSeconds
+    {
+        get { lock (_lock) return _freerunDurationSeconds; }
+        set { lock (_lock) _freerunDurationSeconds = value; }
+    }
+
+    public bool IsFreerunning => _isFreerunning;
 
     public event EventHandler<TimecodeUpdatedEventArgs>? TimecodeUpdated;
     public event EventHandler<TimecodeStatusChangedEventArgs>? StatusChanged;
@@ -212,12 +226,7 @@ public class TimecodeEngine : ITimecodeEngine, IDisposable
             try { _wasapiOut.Pause(); } catch { /* ignore */ }
         }
 
-        if (_isReceiving)
-        {
-            _isReceiving = false;
-            _signalLossTimer.Change(Timeout.Infinite, Timeout.Infinite);
-            StatusChanged?.Invoke(this, new TimecodeStatusChangedEventArgs(false));
-        }
+        TransitionToNotReceiving();
     }
 
     public void ResetGenerator()
@@ -229,13 +238,7 @@ public class TimecodeEngine : ITimecodeEngine, IDisposable
     {
         DisposeGenerator();
         StopLtcCapture();
-
-        if (_isReceiving)
-        {
-            _isReceiving = false;
-            _signalLossTimer.Change(Timeout.Infinite, Timeout.Infinite);
-            StatusChanged?.Invoke(this, new TimecodeStatusChangedEventArgs(false));
-        }
+        TransitionToNotReceiving();
     }
 
     public void Dispose()
@@ -243,6 +246,7 @@ public class TimecodeEngine : ITimecodeEngine, IDisposable
         if (_disposed) return;
         _disposed = true;
 
+        StopFreerun();
         DisposeGenerator();
         StopLtcCapture();
 
@@ -360,11 +364,18 @@ public class TimecodeEngine : ITimecodeEngine, IDisposable
         // Reset signal loss timer
         _signalLossTimer.Change(SignalLossTimeoutMs, Timeout.Infinite);
 
-        // Transition to receiving state
-        if (!_isReceiving)
+        // If freerunning, stop freerun and transition back to Receiving
+        if (_isFreerunning)
         {
+            StopFreerun();
             _isReceiving = true;
-            StatusChanged?.Invoke(this, new TimecodeStatusChangedEventArgs(true));
+            StatusChanged?.Invoke(this, new TimecodeStatusChangedEventArgs(TimecodeReceiveStatus.Receiving));
+        }
+        else if (!_isReceiving)
+        {
+            // Transition to receiving state
+            _isReceiving = true;
+            StatusChanged?.Invoke(this, new TimecodeStatusChangedEventArgs(TimecodeReceiveStatus.Receiving));
         }
 
         // Fire timecode updated event
@@ -392,14 +403,127 @@ public class TimecodeEngine : ITimecodeEngine, IDisposable
         return samples;
     }
 
+    private void TransitionToNotReceiving()
+    {
+        if (!_isReceiving && !_isFreerunning) return;
+        StopFreerun();
+        _isReceiving = false;
+        _signalLossTimer.Change(Timeout.Infinite, Timeout.Infinite);
+        StatusChanged?.Invoke(this, new TimecodeStatusChangedEventArgs(TimecodeReceiveStatus.NotReceiving));
+    }
+
     private void OnSignalLossTimeout(object? state)
     {
         if (_disposed) return;
 
-        if (_isReceiving)
+        // If LTC mode and freerun is enabled, start freerun instead of going to NotReceiving
+        double freerunDuration;
+        TimecodeSourceType source;
+        lock (_lock)
         {
-            _isReceiving = false;
-            StatusChanged?.Invoke(this, new TimecodeStatusChangedEventArgs(false));
+            freerunDuration = _freerunDurationSeconds;
+            source = _activeSource;
         }
+
+        if (source == TimecodeSourceType.Ltc && freerunDuration > 0)
+        {
+            StartFreerun(freerunDuration);
+        }
+        else
+        {
+            TransitionToNotReceiving();
+        }
+    }
+
+    private void StartFreerun(double durationSeconds)
+    {
+        if (_isFreerunning || _disposed) return;
+
+        _isFreerunning = true;
+        _isReceiving = false;
+
+        StatusChanged?.Invoke(this, new TimecodeStatusChangedEventArgs(TimecodeReceiveStatus.Freerunning));
+
+        _freerunCts = new CancellationTokenSource();
+        var token = _freerunCts.Token;
+
+        // Set expiry timer to transition to NotReceiving after duration
+        var expiryMs = (int)(durationSeconds * 1000);
+        _freerunExpiryTimer = new Timer(_ =>
+        {
+            if (_disposed) return;
+            TransitionToNotReceiving();
+        }, null, expiryMs, Timeout.Infinite);
+
+        // Start freerun frame generation on a background thread
+        TimecodeValue lastRaw;
+        TimecodeOffset currentOffset;
+        lock (_lock)
+        {
+            lastRaw = _currentRawTimecode;
+            currentOffset = _offset;
+        }
+
+        var fps = FrameRate.FramesPerSecond();
+        var intervalMs = 1000.0 / fps;
+        var lastTotalFrames = lastRaw.TotalFrames();
+
+        Thread freerunThread = new(() =>
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            long frameCount = 0;
+
+            while (!token.IsCancellationRequested)
+            {
+                frameCount++;
+                var nextFrameTime = frameCount * intervalMs;
+
+                // Spin-wait until it's time for the next frame
+                while (stopwatch.Elapsed.TotalMilliseconds < nextFrameTime)
+                {
+                    if (token.IsCancellationRequested) return;
+                    Thread.Sleep(1);
+                }
+
+                if (token.IsCancellationRequested) return;
+
+                var newTotalFrames = lastTotalFrames + frameCount;
+                var rawFrame = TimecodeValue.FromTotalFrames(newTotalFrames, FrameRate);
+
+                TimecodeOffset offset;
+                lock (_lock)
+                {
+                    offset = _offset;
+                }
+                var offsetFrame = rawFrame.Add(offset);
+
+                lock (_lock)
+                {
+                    _currentRawTimecode = rawFrame;
+                    _currentOffsetTimecode = offsetFrame;
+                }
+
+                TimecodeUpdated?.Invoke(this, new TimecodeUpdatedEventArgs(rawFrame, offsetFrame));
+            }
+        })
+        {
+            Name = "TimecodeEngine-Freerun",
+            IsBackground = true,
+        };
+        freerunThread.Start();
+    }
+
+    private void StopFreerun()
+    {
+        if (!_isFreerunning) return;
+
+        _freerunCts?.Cancel();
+        _freerunCts?.Dispose();
+        _freerunCts = null;
+
+        _freerunExpiryTimer?.Dispose();
+        _freerunExpiryTimer = null;
+
+        _isFreerunning = false;
     }
 }

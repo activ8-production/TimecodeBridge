@@ -231,19 +231,23 @@ public partial class TimecodeViewModel : DispatcherViewModel
                 {
                     IsGeneratorRunning = false;
                     IsLtcOutputActive = false;
-                    StatusText = _hasEverReceived ? "停止" : "停止";
+                    StatusText = "停止";
                 }
             }
             else
             {
-                if (e.IsReceiving)
+                switch (e.Status)
                 {
-                    _hasEverReceived = true;
-                    StatusText = "受信中";
-                }
-                else
-                {
-                    StatusText = _hasEverReceived ? "信号喪失" : "停止";
+                    case TimecodeReceiveStatus.Receiving:
+                        _hasEverReceived = true;
+                        StatusText = "受信中";
+                        break;
+                    case TimecodeReceiveStatus.Freerunning:
+                        StatusText = "フリーラン";
+                        break;
+                    case TimecodeReceiveStatus.NotReceiving:
+                        StatusText = _hasEverReceived ? "信号喪失" : "停止";
+                        break;
                 }
             }
         });
@@ -262,6 +266,7 @@ public partial class TimecodeViewModel : DispatcherViewModel
                 OutputDeviceId = SelectedOutputDevice?.Id ?? string.Empty,
                 VolumeLevel = OutputVolumeLevel,
             },
+            FreerunDurationSeconds = _timecodeEngine.FreerunDurationSeconds,
         };
     }
 
@@ -285,6 +290,9 @@ public partial class TimecodeViewModel : DispatcherViewModel
         // Restore input device selection
         SelectedDevice = AudioDevices.FirstOrDefault(d => d.Id == settings.DeviceId);
 
+        // Restore freerun duration
+        _timecodeEngine.FreerunDurationSeconds = settings.FreerunDurationSeconds;
+
         // Restore source type (this triggers OnSelectedSourceChanged which may auto-start LTC)
         SelectedSource = settings.SourceType;
 
@@ -304,9 +312,4 @@ public partial class TimecodeViewModel : DispatcherViewModel
         }
         return new TimecodeValue(0, 0, 0, 0, frameRate);
     }
-}
-
-public record AudioDeviceInfo(string Id, string DisplayName, bool IsLoopback)
-{
-    public override string ToString() => DisplayName;
 }

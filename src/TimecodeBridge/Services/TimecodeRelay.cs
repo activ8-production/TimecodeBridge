@@ -51,9 +51,9 @@ public class TimecodeRelay : ITimecodeRelay
 
     private void OnStatusChanged(object? sender, TimecodeStatusChangedEventArgs e)
     {
-        if (!e.IsReceiving)
+        if (e.Status == Models.TimecodeReceiveStatus.NotReceiving)
         {
-            // Signal lost - send notification
+            // Signal lost (after freerun expired or freerun disabled) - send notification
             var lostAddress = OscAddressPattern + "/lost";
             _oscSender.Send(lostAddress, [], TargetHostIds);
         }

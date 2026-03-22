@@ -3,6 +3,7 @@ namespace TimecodeBridge.Tests.Services;
 using TimecodeBridge.Models;
 using TimecodeBridge.Services;
 using TimecodeBridge.Services.Interfaces;
+using TimecodeReceiveStatus = TimecodeBridge.Models.TimecodeReceiveStatus;
 
 #region Test Doubles
 
@@ -14,6 +15,8 @@ internal class StubTimecodeEngine : ITimecodeEngine
     public FrameRate FrameRate { get; set; } = FrameRate.Fps30;
     public TimecodeSourceType ActiveSource { get; set; }
     public bool IsReceiving { get; set; }
+    public double FreerunDurationSeconds { get; set; }
+    public bool IsFreerunning { get; set; }
 
     public event EventHandler<TimecodeUpdatedEventArgs>? TimecodeUpdated;
     public event EventHandler<TimecodeStatusChangedEventArgs>? StatusChanged;
@@ -37,6 +40,13 @@ internal class StubTimecodeEngine : ITimecodeEngine
     {
         IsReceiving = isReceiving;
         StatusChanged?.Invoke(this, new TimecodeStatusChangedEventArgs(isReceiving));
+    }
+
+    public void RaiseStatusChanged(TimecodeReceiveStatus status)
+    {
+        IsReceiving = status != TimecodeReceiveStatus.NotReceiving;
+        IsFreerunning = status == TimecodeReceiveStatus.Freerunning;
+        StatusChanged?.Invoke(this, new TimecodeStatusChangedEventArgs(status));
     }
 }
 
@@ -218,6 +228,31 @@ public class TimecodeRelayTests
         Assert.Single(_oscSender.SentMessages);
         var arg = Assert.IsType<OscFloat32Argument>(_oscSender.SentMessages[0].Arguments[0]);
         Assert.Equal(offset.TotalFrames() / (float)offset.FrameRate.FramesPerSecond(), arg.Value);
+    }
+
+    [Fact]
+    public void Freerunning_DoesNotSendLostNotification()
+    {
+        _engine.RaiseTimecodeUpdated(SampleTimecode, SampleTimecode);
+        _oscSender.SentMessages.Clear();
+
+        // Freerunning status should NOT send /timecode/lost
+        _engine.RaiseStatusChanged(TimecodeReceiveStatus.Freerunning);
+
+        Assert.Empty(_oscSender.SentMessages);
+    }
+
+    [Fact]
+    public void NotReceiving_SendsLostNotification()
+    {
+        _engine.RaiseTimecodeUpdated(SampleTimecode, SampleTimecode);
+        _oscSender.SentMessages.Clear();
+
+        // NotReceiving should send /timecode/lost
+        _engine.RaiseStatusChanged(TimecodeReceiveStatus.NotReceiving);
+
+        Assert.Single(_oscSender.SentMessages);
+        Assert.Equal("/timecode/lost", _oscSender.SentMessages[0].OscAddress);
     }
 
     #endregion

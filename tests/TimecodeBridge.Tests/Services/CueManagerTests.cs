@@ -446,6 +446,8 @@ public class CueManagerTests
         public FrameRate FrameRate => FrameRate.Fps30;
         public TimecodeSourceType ActiveSource => TimecodeSourceType.Ltc;
         public bool IsReceiving => false;
+        public double FreerunDurationSeconds { get; set; }
+        public bool IsFreerunning => false;
 
         public void StartLtc(string audioDeviceId, bool isLoopback = false) { }
         public void Stop() { }
