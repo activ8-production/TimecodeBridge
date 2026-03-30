@@ -87,8 +87,52 @@ mc:Ignorable="d"
                                VerticalAlignment="Center" />
                 </StackPanel>
 
-                <!-- Status + Source (right-aligned) -->
+                <!-- Status + Source + Mute (right-aligned) -->
                 <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Mute Toggle -->
+                    <ToggleButton IsChecked="{Binding IsTriggerMuted}"
+                                  ToolTip="OSCトリガーのミュート切替"
+                                  Margin="0,0,14,0" VerticalAlignment="Center">
+                        <ToggleButton.Style>
+                            <Style TargetType="ToggleButton">
+                                <Setter Property="Cursor" Value="Hand" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border x:Name="MuteBorder"
+                                                    Background="#2A2040" BorderBrush="#4A4068"
+                                                    BorderThickness="1.5" CornerRadius="6"
+                                                    Padding="10,5" SnapsToDevicePixels="True">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Ellipse x:Name="MuteDot" Width="8" Height="8"
+                                                             Fill="{DynamicResource SuccessBrush}"
+                                                             Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                    <TextBlock x:Name="MuteLabel" Text="LIVE"
+                                                               FontFamily="Consolas" FontSize="11"
+                                                               FontWeight="Bold"
+                                                               Foreground="{DynamicResource SuccessBrush}"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter TargetName="MuteBorder" Property="Background" Value="#401A1A" />
+                                                    <Setter TargetName="MuteBorder" Property="BorderBrush" Value="#EF5A6F" />
+                                                    <Setter TargetName="MuteDot" Property="Fill" Value="#EF5A6F" />
+                                                    <Setter TargetName="MuteLabel" Property="Text" Value="MUTE" />
+                                                    <Setter TargetName="MuteLabel" Property="Foreground" Value="#EF5A6F" />
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="MuteBorder" Property="BorderBrush" Value="{DynamicResource AccentHoverBrush}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ToggleButton.Style>
+                    </ToggleButton>
+
                     <Ellipse Style="{StaticResource StatusIndicatorStyle}" Margin="0,0,4,0" />
                     <TextBlock Text="{Binding StatusText, FallbackValue='停止'}"
                                Foreground="{DynamicResource PrimaryForegroundBrush}"

@@ -13,6 +13,11 @@ public interface ICueManager
     /// </summary>
     int TriggerWindowFrames { get; set; }
 
+    /// <summary>
+    /// When true, timecode-triggered cues are suppressed. Manual triggers still work.
+    /// </summary>
+    bool IsMuted { get; set; }
+
     void AddCue(Cue cue);
     void UpdateCue(string cueId, Cue updatedCue);
     void RemoveCue(string cueId);

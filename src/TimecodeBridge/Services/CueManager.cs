@@ -17,6 +17,7 @@ public class CueManager : ICueManager
     private TimecodeValue? _lastRawTimecode;
 
     public int TriggerWindowFrames { get; set; } = 3;
+    public bool IsMuted { get; set; }
 
     public CueManager(ITimecodeEngine timecodeEngine, IOscSender oscSender)
     {
@@ -107,6 +108,14 @@ public class CueManager : ICueManager
     {
         var tc = e.OffsetTimecode;
         long tcOrd = tc.ToOrdinal();
+
+        // When muted, keep tracking position but don't fire any cues.
+        if (IsMuted)
+        {
+            _highWaterMark = tc;
+            _lastRawTimecode = e.RawTimecode;
+            return;
+        }
 
         // Detect offset change: if raw TC barely moved but offset TC jumped,
         // the user changed the offset — reset high-water mark without triggering.

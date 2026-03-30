@@ -10,13 +10,29 @@ public class TimecodeViewModelTests
     private static TimecodeValue TC(int h, int m, int s, int f) =>
         new(h, m, s, f, FrameRate.Fps30);
 
+    private static ICueManager StubCue() => new StubCueManagerForTc();
+
+    private class StubCueManagerForTc : ICueManager
+    {
+        public IReadOnlyList<Cue> Cues => [];
+        public int TriggerWindowFrames { get; set; } = 3;
+        public bool IsMuted { get; set; }
+        public void AddCue(Cue cue) { }
+        public void UpdateCue(string cueId, Cue updatedCue) { }
+        public void RemoveCue(string cueId) { }
+        public void ReorderCues(IReadOnlyList<string> orderedCueIds) { }
+        public void SetCueEnabled(string cueId, bool enabled) { }
+        public void ManualTrigger(string cueId) { }
+        public event EventHandler<CueTriggeredEventArgs>? CueTriggered;
+    }
+
     // --- Construction ---
 
     [Fact]
     public void Constructor_InitializesDefaultValues()
     {
         var engine = new StubTimecodeEngine();
-        var vm = new TimecodeViewModel(engine);
+        var vm = new TimecodeViewModel(engine, StubCue());
 
         Assert.Equal("", vm.RawTimecodeDisplay);
         Assert.Equal("", vm.OffsetTimecodeDisplay);
@@ -30,7 +46,7 @@ public class TimecodeViewModelTests
     public void TimecodeUpdated_UpdatesRawTimecodeDisplay()
     {
         var engine = new StubTimecodeEngine();
-        var vm = new TimecodeViewModel(engine);
+        var vm = new TimecodeViewModel(engine, StubCue());
 
         engine.SimulateTimecodeUpdate(TC(1, 2, 3, 4), TC(1, 2, 3, 4));
 
@@ -41,7 +57,7 @@ public class TimecodeViewModelTests
     public void TimecodeUpdated_UpdatesOffsetTimecodeDisplay()
     {
         var engine = new StubTimecodeEngine();
-        var vm = new TimecodeViewModel(engine);
+        var vm = new TimecodeViewModel(engine, StubCue());
 
         engine.SimulateTimecodeUpdate(TC(1, 0, 0, 0), TC(2, 0, 0, 0));
 
@@ -52,7 +68,7 @@ public class TimecodeViewModelTests
     public void TimecodeUpdated_RaisesPropertyChanged()
     {
         var engine = new StubTimecodeEngine();
-        var vm = new TimecodeViewModel(engine);
+        var vm = new TimecodeViewModel(engine, StubCue());
 
         var changedProperties = new List<string>();
         vm.PropertyChanged += (_, e) => changedProperties.Add(e.PropertyName!);
@@ -69,7 +85,7 @@ public class TimecodeViewModelTests
     public void StatusChanged_Receiving_UpdatesIsReceivingAndStatusText()
     {
         var engine = new StubTimecodeEngine();
-        var vm = new TimecodeViewModel(engine);
+        var vm = new TimecodeViewModel(engine, StubCue());
 
         engine.SimulateStatusChanged(true);
 
@@ -81,7 +97,7 @@ public class TimecodeViewModelTests
     public void StatusChanged_NotReceiving_UpdatesIsReceivingAndStatusText()
     {
         var engine = new StubTimecodeEngine();
-        var vm = new TimecodeViewModel(engine);
+        var vm = new TimecodeViewModel(engine, StubCue());
 
         // First set to receiving
         engine.SimulateStatusChanged(true);
@@ -97,7 +113,7 @@ public class TimecodeViewModelTests
     public void StatusChanged_RaisesPropertyChanged()
     {
         var engine = new StubTimecodeEngine();
-        var vm = new TimecodeViewModel(engine);
+        var vm = new TimecodeViewModel(engine, StubCue());
 
         var changedProperties = new List<string>();
         vm.PropertyChanged += (_, e) => changedProperties.Add(e.PropertyName!);
@@ -114,7 +130,7 @@ public class TimecodeViewModelTests
     public void Offset_SetValue_SyncsToEngine()
     {
         var engine = new StubTimecodeEngine();
-        var vm = new TimecodeViewModel(engine);
+        var vm = new TimecodeViewModel(engine, StubCue());
 
         var offset = new TimecodeOffset(false, 0, 0, 5, 0, FrameRate.Fps30);
         vm.Offset = offset;
@@ -126,7 +142,7 @@ public class TimecodeViewModelTests
     public void Offset_DefaultValue_MatchesEngineDefault()
     {
         var engine = new StubTimecodeEngine();
-        var vm = new TimecodeViewModel(engine);
+        var vm = new TimecodeViewModel(engine, StubCue());
 
         Assert.Equal(engine.Offset, vm.Offset);
     }
@@ -137,7 +153,7 @@ public class TimecodeViewModelTests
     public void TimecodeUpdated_DropFrame_DisplaysWithSemicolon()
     {
         var engine = new StubTimecodeEngine();
-        var vm = new TimecodeViewModel(engine);
+        var vm = new TimecodeViewModel(engine, StubCue());
 
         var raw = new TimecodeValue(1, 0, 0, 2, FrameRate.Fps2997Drop);
         var offset = new TimecodeValue(1, 0, 0, 2, FrameRate.Fps2997Drop);
@@ -153,7 +169,7 @@ public class TimecodeViewModelTests
     public void StatusChanged_NeverReceivedThenLostSignal_ShowsSignalLost()
     {
         var engine = new StubTimecodeEngine();
-        var vm = new TimecodeViewModel(engine);
+        var vm = new TimecodeViewModel(engine, StubCue());
 
         // Simulate receiving first, then losing signal
         engine.SimulateStatusChanged(true);

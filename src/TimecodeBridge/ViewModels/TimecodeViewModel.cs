@@ -28,6 +28,7 @@ public partial class TimecodeViewModel : DispatcherViewModel
     [ObservableProperty] private AudioDeviceInfo? _selectedOutputDevice;
     [ObservableProperty] private float _outputVolumeLevel = 0.8f;
     [ObservableProperty] private bool _isLtcOutputActive;
+    [ObservableProperty] private bool _isTriggerMuted;
 
     public bool IsGeneratorMode
     {
@@ -74,15 +75,23 @@ public partial class TimecodeViewModel : DispatcherViewModel
         }
     }
 
-    public TimecodeViewModel(ITimecodeEngine timecodeEngine)
+    private readonly ICueManager _cueManager;
+
+    public TimecodeViewModel(ITimecodeEngine timecodeEngine, ICueManager cueManager)
     {
         _timecodeEngine = timecodeEngine;
+        _cueManager = cueManager;
         _offset = timecodeEngine.Offset;
 
         _timecodeEngine.TimecodeUpdated += OnTimecodeUpdated;
         _timecodeEngine.StatusChanged += OnStatusChanged;
 
         RefreshAudioDevices();
+    }
+
+    partial void OnIsTriggerMutedChanged(bool value)
+    {
+        _cueManager.IsMuted = value;
     }
 
     partial void OnSelectedSourceChanged(TimecodeSourceType value)

@@ -309,6 +309,7 @@ public class CueListViewModelTests
         private readonly List<Cue> _cues = [];
         public IReadOnlyList<Cue> Cues => _cues.AsReadOnly();
     public int TriggerWindowFrames { get; set; } = 3;
+    public bool IsMuted { get; set; }
 
         public List<string> ManualTriggerCalls { get; } = [];
         public List<(string CueId, bool Enabled)> SetCueEnabledCalls { get; } = [];

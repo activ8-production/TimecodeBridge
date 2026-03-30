@@ -73,6 +73,7 @@ internal class StubCueManagerForMain : ICueManager
 
     public IReadOnlyList<Cue> Cues => _cues.AsReadOnly();
     public int TriggerWindowFrames { get; set; } = 3;
+    public bool IsMuted { get; set; }
 
     public event EventHandler<CueTriggeredEventArgs>? CueTriggered;
 
@@ -187,7 +188,7 @@ public class MainViewModelTests
 
     public MainViewModelTests()
     {
-        _timecodeViewModel = new TimecodeViewModel(_timecodeEngine);
+        _timecodeViewModel = new TimecodeViewModel(_timecodeEngine, _cueManager);
         _cueListViewModel = new CueListViewModel(_cueManager, _timecodeEngine, _hostRegistry);
         _relayViewModel = new RelayViewModel(_timecodeRelay, _hostRegistry);
     }
