@@ -3,11 +3,16 @@ bin/
 obj/
 publish/
 publish-single/
+publish*/
 
 ## IDE
 .vs/
 *.user
 *.suo
+
+## Claude Code (keep commands, ignore local settings)
+.claude/*
+!.claude/commands/
 
 ## OS
 Thumbs.db
