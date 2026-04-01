@@ -453,6 +453,7 @@ public class CueManagerTests
         public void Stop() { }
         public void StartGenerator(GeneratorSettings settings) { }
         public void ResetGenerator() { }
+        public void ResetGenerator(TimecodeValue startTime) { }
         public void ResumeGenerator() { }
         public void StopGenerator() { }
 

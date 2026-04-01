@@ -178,6 +178,71 @@ public class TimecodeViewModelTests
         Assert.Equal("信号喪失", vm.StatusText);
     }
 
+    // --- Dispose (event unsubscription) ---
+
+    [StaFact]
+    public void Dispose_UnsubscribesFromTimecodeUpdated()
+    {
+        var engine = new StubTimecodeEngine();
+        var vm = new TimecodeViewModel(engine, StubCue());
+
+        // Verify update works before dispose
+        engine.SimulateTimecodeUpdate(TC(1, 0, 0, 0), TC(1, 0, 0, 0));
+        Assert.Equal("01:00:00:00", vm.RawTimecodeDisplay);
+
+        vm.Dispose();
+
+        // After dispose, timecode update should NOT update the display
+        engine.SimulateTimecodeUpdate(TC(2, 0, 0, 0), TC(2, 0, 0, 0));
+        Assert.Equal("01:00:00:00", vm.RawTimecodeDisplay);
+    }
+
+    [StaFact]
+    public void Dispose_UnsubscribesFromStatusChanged()
+    {
+        var engine = new StubTimecodeEngine();
+        var vm = new TimecodeViewModel(engine, StubCue());
+
+        engine.SimulateStatusChanged(true);
+        Assert.True(vm.IsReceiving);
+
+        vm.Dispose();
+
+        // After dispose, status change should NOT update the VM
+        engine.SimulateStatusChanged(false);
+        Assert.True(vm.IsReceiving); // should remain true
+    }
+
+    // --- IsTriggerMuted syncs to CueManager ---
+
+    [Fact]
+    public void IsTriggerMuted_SyncsToCueManager()
+    {
+        var engine = new StubTimecodeEngine();
+        var cueManager = new MutableStubCueManager();
+        var vm = new TimecodeViewModel(engine, cueManager);
+
+        vm.IsTriggerMuted = true;
+        Assert.True(cueManager.IsMuted);
+
+        vm.IsTriggerMuted = false;
+        Assert.False(cueManager.IsMuted);
+    }
+
+    private class MutableStubCueManager : ICueManager
+    {
+        public IReadOnlyList<Cue> Cues => [];
+        public int TriggerWindowFrames { get; set; } = 3;
+        public bool IsMuted { get; set; }
+        public void AddCue(Cue cue) { }
+        public void UpdateCue(string cueId, Cue updatedCue) { }
+        public void RemoveCue(string cueId) { }
+        public void ReorderCues(IReadOnlyList<string> orderedCueIds) { }
+        public void SetCueEnabled(string cueId, bool enabled) { }
+        public void ManualTrigger(string cueId) { }
+        public event EventHandler<CueTriggeredEventArgs>? CueTriggered;
+    }
+
     // --- Test Double ---
 
     private class StubTimecodeEngine : ITimecodeEngine
@@ -195,6 +260,7 @@ public class TimecodeViewModelTests
         public void Stop() { }
         public void StartGenerator(GeneratorSettings settings) { }
         public void ResetGenerator() { }
+        public void ResetGenerator(TimecodeValue startTime) { }
         public void ResumeGenerator() { }
         public void StopGenerator() { }
 

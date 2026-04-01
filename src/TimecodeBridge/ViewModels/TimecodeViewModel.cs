@@ -211,7 +211,8 @@ public partial class TimecodeViewModel : DispatcherViewModel
     [RelayCommand]
     private void ResetGenerator()
     {
-        _timecodeEngine.ResetGenerator();
+        var startTime = ParseTimecodeInput(GeneratorStartTime, GeneratorFrameRate);
+        _timecodeEngine.ResetGenerator(startTime);
     }
 
     private void OnTimecodeUpdated(object? sender, TimecodeUpdatedEventArgs e)
@@ -306,6 +307,12 @@ public partial class TimecodeViewModel : DispatcherViewModel
         SelectedSource = settings.SourceType;
 
         StatusText = "停止";
+    }
+
+    public override void Dispose()
+    {
+        _timecodeEngine.TimecodeUpdated -= OnTimecodeUpdated;
+        _timecodeEngine.StatusChanged -= OnStatusChanged;
     }
 
     private static TimecodeValue ParseTimecodeInput(string input, FrameRate frameRate)

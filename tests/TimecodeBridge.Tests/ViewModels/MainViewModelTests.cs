@@ -9,7 +9,6 @@ using TimecodeBridge.ViewModels;
 
 internal class StubProjectService : IProjectService
 {
-    private readonly List<string> _recentProjects = [];
     private bool _hasUnsavedChanges;
     private ProjectData? _lastSavedData;
     private string? _lastSavedPath;
@@ -29,8 +28,6 @@ internal class StubProjectService : IProjectService
         var data = ProjectDataToLoad ?? new ProjectData();
         CurrentFilePath = filePath;
         SetHasUnsavedChanges(false);
-        _recentProjects.Remove(filePath);
-        _recentProjects.Insert(0, filePath);
         return data;
     }
 
@@ -40,19 +37,12 @@ internal class StubProjectService : IProjectService
         _lastSavedData = data;
         CurrentFilePath = filePath;
         SetHasUnsavedChanges(false);
-        _recentProjects.Remove(filePath);
-        _recentProjects.Insert(0, filePath);
     }
 
     public void MarkAsChanged()
     {
         SetHasUnsavedChanges(true);
     }
-
-    public IReadOnlyList<string> GetRecentProjects() => _recentProjects.AsReadOnly();
-
-    public BackgroundSettings LoadBackgroundSettings() => new();
-    public void SaveBackgroundSettings(BackgroundSettings settings) { }
 
     public void SimulateUnsavedChanges(bool value)
     {
@@ -65,6 +55,29 @@ internal class StubProjectService : IProjectService
         _hasUnsavedChanges = value;
         UnsavedChangesStatusChanged?.Invoke(this, EventArgs.Empty);
     }
+}
+
+internal class StubRecentProjectsService : IRecentProjectsService
+{
+    private readonly List<string> _recentProjects = [];
+
+    public IReadOnlyList<string> GetRecentProjects() => _recentProjects.AsReadOnly();
+
+    public void AddRecentProject(string filePath)
+    {
+        _recentProjects.Remove(filePath);
+        _recentProjects.Insert(0, filePath);
+    }
+}
+
+internal class StubAppSettingsService : IAppSettingsService
+{
+    public BackgroundSettings? LastSavedBackgroundSettings { get; private set; }
+
+    public BackgroundSettings LoadBackgroundSettings() => new();
+    public void SaveBackgroundSettings(BackgroundSettings settings) => LastSavedBackgroundSettings = settings;
+    public List<string> LoadRecentProjects() => [];
+    public void SaveRecentProjects(List<string> projects) { }
 }
 
 internal class StubCueManagerForMain : ICueManager
@@ -150,6 +163,12 @@ internal class StubTimecodeRelayForMain : ITimecodeRelay
     public void TriggerOneShot() { }
 }
 
+internal class StubCueDialogServiceForMain : ICueDialogService
+{
+    public Cue? ShowEditDialog(Cue template, IReadOnlyList<OscHost> hosts, FrameRate frameRate, string title) => template;
+    public (int Count, int IntervalHours)? ShowBatchDuplicateDialog() => null;
+}
+
 internal class StubTimecodeEngineForMain : ITimecodeEngine
 {
     public TimecodeValue CurrentRawTimecode { get; set; }
@@ -165,6 +184,7 @@ internal class StubTimecodeEngineForMain : ITimecodeEngine
     public void Stop() { }
     public void StartGenerator(GeneratorSettings settings) { }
     public void ResetGenerator() { }
+    public void ResetGenerator(TimecodeValue startTime) { }
     public void ResumeGenerator() { }
     public void StopGenerator() { }
 
@@ -178,6 +198,8 @@ internal class StubTimecodeEngineForMain : ITimecodeEngine
 public class MainViewModelTests
 {
     private readonly StubProjectService _projectService = new();
+    private readonly StubRecentProjectsService _recentProjectsService = new();
+    private readonly StubAppSettingsService _appSettingsService = new();
     private readonly StubCueManagerForMain _cueManager = new();
     private readonly StubHostRegistryForMain _hostRegistry = new();
     private readonly StubTimecodeRelayForMain _timecodeRelay = new();
@@ -189,12 +211,14 @@ public class MainViewModelTests
     public MainViewModelTests()
     {
         _timecodeViewModel = new TimecodeViewModel(_timecodeEngine, _cueManager);
-        _cueListViewModel = new CueListViewModel(_cueManager, _timecodeEngine, _hostRegistry);
+        _cueListViewModel = new CueListViewModel(_cueManager, _timecodeEngine, _hostRegistry, new StubCueDialogServiceForMain());
         _relayViewModel = new RelayViewModel(_timecodeRelay, _hostRegistry);
     }
 
     private MainViewModel CreateVm() => new(
         _projectService,
+        _recentProjectsService,
+        _appSettingsService,
         _cueManager,
         _hostRegistry,
         _timecodeRelay,
@@ -403,6 +427,18 @@ public class MainViewModelTests
         Assert.Equal("TimecodeBridge - show.json", vm.Title);
     }
 
+    [Fact]
+    public void OpenProjectCommand_AddsToRecentProjects()
+    {
+        _projectService.ProjectDataToLoad = new ProjectData();
+        var vm = CreateVm();
+
+        vm.OpenProjectCommand.Execute("C:/projects/show.json");
+
+        Assert.Single(vm.RecentProjects);
+        Assert.Equal("C:/projects/show.json", vm.RecentProjects[0]);
+    }
+
     // --- HasUnsavedChanges and Title with "*" ---
 
     [Fact]
@@ -445,7 +481,7 @@ public class MainViewModelTests
     // --- RecentProjects ---
 
     [Fact]
-    public void RecentProjects_ReturnsListFromProjectService()
+    public void RecentProjects_ReturnsListFromRecentProjectsService()
     {
         var vm = CreateVm();
 
@@ -527,5 +563,71 @@ public class MainViewModelTests
         vm.SaveProjectCommand.Execute("C:/test/existing.json");
 
         Assert.Equal("C:/test/existing.json", _projectService.LastSavedPath);
+    }
+
+    // --- Background settings via IAppSettingsService ---
+
+    [Fact]
+    public void Constructor_LoadsBackgroundSettingsFromAppSettingsService()
+    {
+        var vm = CreateVm();
+
+        // StubAppSettingsService returns default BackgroundSettings (null ImagePath, 0.7 opacity)
+        Assert.Null(vm.BackgroundImagePath);
+        Assert.Equal(0.7, vm.BackgroundDarkenOpacity);
+    }
+
+    [Fact]
+    public void SetBackgroundImageCommand_SavesViaAppSettingsService()
+    {
+        var vm = CreateVm();
+
+        vm.SetBackgroundImageCommand.Execute("C:/images/bg.png");
+
+        Assert.Equal("C:/images/bg.png", vm.BackgroundImagePath);
+        Assert.NotNull(_appSettingsService.LastSavedBackgroundSettings);
+        Assert.Equal("C:/images/bg.png", _appSettingsService.LastSavedBackgroundSettings!.ImagePath);
+    }
+
+    [Fact]
+    public void ClearBackgroundImageCommand_ClearsAndSaves()
+    {
+        var vm = CreateVm();
+
+        vm.SetBackgroundImageCommand.Execute("C:/images/bg.png");
+        vm.ClearBackgroundImageCommand.Execute(null);
+
+        Assert.Null(vm.BackgroundImagePath);
+        Assert.Null(_appSettingsService.LastSavedBackgroundSettings!.ImagePath);
+    }
+
+    // --- Dispose (event unsubscription) ---
+
+    [Fact]
+    public void Dispose_UnsubscribesFromUnsavedChangesStatusChanged()
+    {
+        var vm = CreateVm();
+
+        Assert.False(vm.HasUnsavedChanges);
+
+        vm.Dispose();
+
+        // After dispose, project service changes should NOT update ViewModel
+        _projectService.SimulateUnsavedChanges(true);
+
+        Assert.False(vm.HasUnsavedChanges);
+    }
+
+    // --- SaveProject includes SourceSettings ---
+
+    [Fact]
+    public void SaveProjectAsCommand_IncludesSourceSettingsInProjectData()
+    {
+        var vm = CreateVm();
+
+        vm.SaveProjectAsCommand.Execute("C:/test/project.json");
+
+        var data = _projectService.LastSavedData!;
+        Assert.NotNull(data.SourceSettings);
     }
 }

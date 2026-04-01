@@ -93,6 +93,15 @@ internal class StubOscSenderForHost : IOscSender
     }
 }
 
+internal class StubHostDialogService : IHostDialogService
+{
+    public OscHost? ShowEditDialog(OscHost template)
+    {
+        // Auto-confirm: return the template as-is
+        return template;
+    }
+}
+
 internal class StubTimecodeEngineForHostMgr : ITimecodeEngine
 {
     public TimecodeValue CurrentRawTimecode { get; set; }
@@ -108,6 +117,7 @@ internal class StubTimecodeEngineForHostMgr : ITimecodeEngine
     public void Stop() { }
     public void StartGenerator(GeneratorSettings settings) { }
     public void ResetGenerator() { }
+    public void ResetGenerator(TimecodeValue startTime) { }
     public void ResumeGenerator() { }
     public void StopGenerator() { }
 
@@ -123,12 +133,11 @@ public class HostManagerViewModelTests
     private readonly StubHostRegistry _hostRegistry = new();
     private readonly StubOscSenderForHost _oscSender = new();
     private readonly StubTimecodeEngineForHostMgr _timecodeEngine = new();
+    private readonly StubHostDialogService _hostDialogService = new();
 
     private HostManagerViewModel CreateVm()
     {
-        var vm = new HostManagerViewModel(_hostRegistry, _oscSender, _timecodeEngine);
-        // Replace dialog with auto-confirm stub that returns the template as-is
-        vm.ShowHostEditDialog = template => template;
+        var vm = new HostManagerViewModel(_hostRegistry, _oscSender, _timecodeEngine, _hostDialogService);
         return vm;
     }
 
@@ -270,4 +279,62 @@ public class HostManagerViewModelTests
         Assert.Single(vm.Hosts);
         Assert.Equal("New", vm.Hosts[0].Name);
     }
+
+    // --- EditHostCommand via IHostDialogService ---
+
+    [Fact]
+    public void EditHostCommand_DialogConfirmed_UpdatesHostInRegistry()
+    {
+        _hostRegistry.AddHost(new OscHost { Id = "h1", Name = "Old", IpAddress = "1.2.3.4", Port = 8000 });
+        var vm = CreateVm();
+
+        vm.EditHostCommand.Execute("h1");
+
+        // StubHostDialogService returns template as-is, so host should be updated with same values
+        Assert.Equal("Old", _hostRegistry.Hosts[0].Name);
+    }
+
+    [Fact]
+    public void EditHostCommand_DialogCancelled_DoesNotModifyHost()
+    {
+        _hostRegistry.AddHost(new OscHost { Id = "h1", Name = "Original", IpAddress = "1.2.3.4", Port = 8000 });
+        var cancelDialogService = new CancellingHostDialogService();
+        var vm = new HostManagerViewModel(_hostRegistry, _oscSender, _timecodeEngine, cancelDialogService);
+
+        vm.EditHostCommand.Execute("h1");
+
+        Assert.Equal("Original", _hostRegistry.Hosts[0].Name);
+    }
+
+    [Fact]
+    public void AddHostCommand_DialogCancelled_DoesNotAddHost()
+    {
+        var cancelDialogService = new CancellingHostDialogService();
+        var vm = new HostManagerViewModel(_hostRegistry, _oscSender, _timecodeEngine, cancelDialogService);
+
+        vm.AddHostCommand.Execute(null);
+
+        Assert.Empty(vm.Hosts);
+    }
+
+    // --- Dispose (event unsubscription) ---
+
+    [Fact]
+    public void Dispose_UnsubscribesFromHostChanged()
+    {
+        var vm = CreateVm();
+        Assert.Empty(vm.Hosts);
+
+        vm.Dispose();
+
+        // After dispose, adding a host should NOT sync to ViewModel
+        _hostRegistry.AddHost(new OscHost { Id = "h1", Name = "After Dispose", IpAddress = "1.2.3.4", Port = 8000 });
+
+        Assert.Empty(vm.Hosts);
+    }
+}
+
+internal class CancellingHostDialogService : IHostDialogService
+{
+    public OscHost? ShowEditDialog(OscHost template) => null;
 }

@@ -57,14 +57,22 @@ public class TimecodeGenerator : ITimecodeGenerator, IDisposable
 
     public void Reset()
     {
+        ResetTo(_startTime);
+    }
+
+    public void ResetTo(TimecodeValue startTime)
+    {
         bool wasRunning = _isRunning;
         if (wasRunning)
         {
             _timerCts?.Cancel();
         }
 
+        _startTime = startTime;
         _totalFramesGenerated = 0;
         lock (_lock) { _currentTimecode = _startTime; }
+
+        FrameGenerated?.Invoke(this, _startTime);
 
         if (wasRunning)
         {

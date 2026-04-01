@@ -27,9 +27,8 @@ public class CueListViewModelTests
 
     private static CueListViewModel CreateVm(StubCueManager cueManager, StubTimecodeEngine engine)
     {
-        var vm = new CueListViewModel(cueManager, engine, new StubHostRegistry());
-        // Replace dialog with auto-confirm stub
-        vm.ShowCueEditDialog = (template, _, _, _) => template;
+        var stubCueDialogService = new StubCueDialogService();
+        var vm = new CueListViewModel(cueManager, engine, new StubHostRegistry(), stubCueDialogService);
         return vm;
     }
 
@@ -261,6 +260,130 @@ public class CueListViewModelTests
         Assert.False(item.IsNextCue);
     }
 
+    // --- EditCueCommand via ICueDialogService ---
+
+    [Fact]
+    public void EditCueCommand_CallsDialogServiceWithCorrectTemplate()
+    {
+        var cueManager = new StubCueManager();
+        var cue = CreateCue("c1", "Original", "/original", 10);
+        cueManager.AddCue(cue);
+        var engine = new StubTimecodeEngine();
+
+        var dialogService = new RecordingCueDialogService();
+        var vm = new CueListViewModel(cueManager, engine, new StubHostRegistry(), dialogService);
+
+        vm.EditCueCommand.Execute("c1");
+
+        Assert.NotNull(dialogService.LastTemplate);
+        Assert.Equal("c1", dialogService.LastTemplate!.Id);
+        Assert.Equal("Original", dialogService.LastTemplate.Name);
+        Assert.Equal("キュー編集", dialogService.LastTitle);
+    }
+
+    [Fact]
+    public void EditCueCommand_DialogConfirmed_UpdatesCueManagerAndCueItems()
+    {
+        var cueManager = new StubCueManager();
+        cueManager.AddCue(CreateCue("c1", "Original", "/original", 10));
+        var engine = new StubTimecodeEngine();
+
+        var editedCue = CreateCue("c1", "Edited", "/edited", 20);
+        var dialogService = new FixedResultCueDialogService(editedCue);
+        var vm = new CueListViewModel(cueManager, engine, new StubHostRegistry(), dialogService);
+
+        vm.EditCueCommand.Execute("c1");
+
+        Assert.Equal("Edited", cueManager.Cues[0].Name);
+        Assert.Equal("Edited", vm.CueItems[0].Name);
+        Assert.Equal("/edited", vm.CueItems[0].OscAddress);
+    }
+
+    [Fact]
+    public void EditCueCommand_DialogCancelled_DoesNotModifyCue()
+    {
+        var cueManager = new StubCueManager();
+        cueManager.AddCue(CreateCue("c1", "Original", "/original", 10));
+        var engine = new StubTimecodeEngine();
+
+        var dialogService = new FixedResultCueDialogService(null); // cancel
+        var vm = new CueListViewModel(cueManager, engine, new StubHostRegistry(), dialogService);
+
+        vm.EditCueCommand.Execute("c1");
+
+        Assert.Equal("Original", cueManager.Cues[0].Name);
+        Assert.Equal("Original", vm.CueItems[0].Name);
+    }
+
+    [Fact]
+    public void AddCueCommand_DialogCancelled_DoesNotAddCue()
+    {
+        var cueManager = new StubCueManager();
+        var engine = new StubTimecodeEngine();
+
+        var dialogService = new FixedResultCueDialogService(null); // cancel
+        var vm = new CueListViewModel(cueManager, engine, new StubHostRegistry(), dialogService);
+
+        vm.AddCueCommand.Execute(null);
+
+        Assert.Empty(cueManager.Cues);
+        Assert.Empty(vm.CueItems);
+    }
+
+    // --- DuplicateCueCommand ---
+
+    [Fact]
+    public void DuplicateCueCommand_CreatesNewCueWithCopyName()
+    {
+        var cueManager = new StubCueManager();
+        cueManager.AddCue(CreateCue("c1", "Scene1", "/scene/1", 10));
+        var engine = new StubTimecodeEngine();
+        var vm = CreateVm(cueManager, engine);
+
+        vm.DuplicateCueCommand.Execute("c1");
+
+        Assert.Equal(2, cueManager.Cues.Count);
+        Assert.Equal("Scene1 (コピー)", cueManager.Cues[1].Name);
+        Assert.NotEqual("c1", cueManager.Cues[1].Id);
+        Assert.Equal("/scene/1", cueManager.Cues[1].OscAddress);
+    }
+
+    // --- Dispose (event unsubscription) ---
+
+    [StaFact]
+    public void Dispose_UnsubscribesFromTimecodeUpdated()
+    {
+        var cueManager = new StubCueManager();
+        cueManager.AddCue(CreateCue("c1", triggerSeconds: 10));
+        var engine = new StubTimecodeEngine();
+        var vm = CreateVm(cueManager, engine);
+
+        vm.Dispose();
+
+        // After dispose, timecode update should NOT update IsNextCue
+        engine.SimulateTimecodeUpdate(TC(0, 0, 5, 0), TC(0, 0, 5, 0));
+
+        // If event was properly unsubscribed, IsNextCue should remain false (initial state)
+        Assert.False(vm.CueItems[0].IsNextCue);
+    }
+
+    [StaFact]
+    public void Dispose_UnsubscribesFromCueTriggered()
+    {
+        var cueManager = new StubCueManager();
+        var cue = CreateCue("c1");
+        cueManager.AddCue(cue);
+        var engine = new StubTimecodeEngine();
+        var vm = CreateVm(cueManager, engine);
+
+        vm.Dispose();
+
+        // After dispose, cue triggered should NOT update IsTriggered
+        cueManager.SimulateCueTriggered(cue, TC(0, 0, 10, 0), false);
+
+        Assert.False(vm.CueItems[0].IsTriggered);
+    }
+
     // --- Test Doubles ---
 
     private class StubTimecodeEngine : ITimecodeEngine
@@ -278,6 +401,7 @@ public class CueListViewModelTests
         public void Stop() { }
         public void StartGenerator(GeneratorSettings settings) { }
         public void ResetGenerator() { }
+        public void ResetGenerator(TimecodeValue startTime) { }
         public void ResumeGenerator() { }
         public void StopGenerator() { }
 
@@ -302,6 +426,45 @@ public class CueListViewModelTests
         public void SetHostEnabled(string hostId, bool enabled) { }
         public IReadOnlyList<OscHost> GetEnabledHosts(IReadOnlyList<string> hostIds) => [];
         public event EventHandler<HostChangedEventArgs>? HostChanged;
+    }
+
+    private class StubCueDialogService : ICueDialogService
+    {
+        public Cue? ShowEditDialog(Cue template, IReadOnlyList<OscHost> hosts, FrameRate frameRate, string title)
+        {
+            // Auto-confirm: return the template as-is
+            return template;
+        }
+
+        public (int Count, int IntervalHours)? ShowBatchDuplicateDialog()
+        {
+            return null;
+        }
+    }
+
+    private class RecordingCueDialogService : ICueDialogService
+    {
+        public Cue? LastTemplate { get; private set; }
+        public string? LastTitle { get; private set; }
+
+        public Cue? ShowEditDialog(Cue template, IReadOnlyList<OscHost> hosts, FrameRate frameRate, string title)
+        {
+            LastTemplate = template;
+            LastTitle = title;
+            return template; // auto-confirm
+        }
+
+        public (int Count, int IntervalHours)? ShowBatchDuplicateDialog() => null;
+    }
+
+    private class FixedResultCueDialogService : ICueDialogService
+    {
+        private readonly Cue? _result;
+
+        public FixedResultCueDialogService(Cue? result) => _result = result;
+
+        public Cue? ShowEditDialog(Cue template, IReadOnlyList<OscHost> hosts, FrameRate frameRate, string title) => _result;
+        public (int Count, int IntervalHours)? ShowBatchDuplicateDialog() => null;
     }
 
     private class StubCueManager : ICueManager

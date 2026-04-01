@@ -234,6 +234,11 @@ public class TimecodeEngine : ITimecodeEngine, IDisposable
         _generator?.Reset();
     }
 
+    public void ResetGenerator(TimecodeValue startTime)
+    {
+        _generator?.ResetTo(startTime);
+    }
+
     public void Stop()
     {
         DisposeGenerator();

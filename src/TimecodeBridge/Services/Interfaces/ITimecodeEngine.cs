@@ -17,6 +17,7 @@ public interface ITimecodeEngine
     void StartGenerator(GeneratorSettings settings);
     void ResumeGenerator();
     void ResetGenerator();
+    void ResetGenerator(TimecodeValue startTime);
     void StopGenerator();
     void Stop();
 
