@@ -40,6 +40,10 @@
                             Command="{Binding EditCueCommand}"
                             CommandParameter="{Binding SelectedItem.Id, ElementName=CueDataGrid}"
                             FontSize="11" />
+                    <Button Content="一括編集" Padding="10,4" Margin="3,0"
+                            Command="{Binding BatchEditCuesCommand}"
+                            CommandParameter="{Binding SelectedItems, ElementName=CueDataGrid}"
+                            FontSize="11" />
                     <Button Content="複製" Padding="10,4" Margin="3,0"
                             Command="{Binding DuplicateCueCommand}"
                             CommandParameter="{Binding SelectedItem.Id, ElementName=CueDataGrid}"
@@ -58,6 +62,7 @@
             <!-- Cue List -->
             <ListView Grid.Row="1" x:Name="CueDataGrid"
                       ItemsSource="{Binding CueItems}"
+                      SelectionMode="Extended"
                       Background="Transparent"
                       BorderThickness="0"
                       Margin="4,0,4,4"

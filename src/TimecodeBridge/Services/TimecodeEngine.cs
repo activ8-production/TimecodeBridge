@@ -33,6 +33,11 @@ public class TimecodeEngine : ITimecodeEngine, IDisposable
     private CancellationTokenSource? _freerunCts;
     private Timer? _freerunExpiryTimer;
 
+    // LTC frame rate auto-detection
+    private bool _ltcAutoDetectActive;
+    private int _ltcMaxFrameSeen;
+    private bool _ltcDropFrameSeen;
+
     // Thread-safe state
     private volatile bool _isReceiving;
     private volatile bool _disposed;
@@ -57,7 +62,7 @@ public class TimecodeEngine : ITimecodeEngine, IDisposable
         set { lock (_lock) _offset = value; }
     }
 
-    public FrameRate FrameRate { get; }
+    public FrameRate FrameRate { get; set; }
 
     public TimecodeSourceType ActiveSource
     {
@@ -112,6 +117,9 @@ public class TimecodeEngine : ITimecodeEngine, IDisposable
     {
         StopLtcCapture();
 
+        _ltcAutoDetectActive = true;
+        _ltcMaxFrameSeen = 0;
+        _ltcDropFrameSeen = false;
         ActiveSource = TimecodeSourceType.Ltc;
 
         _ltcDecoder = new LtcDecoder();
@@ -164,6 +172,8 @@ public class TimecodeEngine : ITimecodeEngine, IDisposable
     {
         Stop();
 
+        FrameRate = settings.FrameRate;
+        _ltcAutoDetectActive = false;
         ActiveSource = TimecodeSourceType.Generator;
 
         _generator = new TimecodeGenerator();
@@ -349,7 +359,18 @@ public class TimecodeEngine : ITimecodeEngine, IDisposable
 
     private void ProcessFrame(TimecodeValue rawFrame)
     {
-        // Normalize to engine's FrameRate to avoid fluctuations from LTC decoder inference
+        // Auto-detect frame rate from LTC signal
+        if (_ltcAutoDetectActive)
+        {
+            if (rawFrame.FrameRate.IsDropFrame())
+                _ltcDropFrameSeen = true;
+            if (rawFrame.Frames > _ltcMaxFrameSeen)
+                _ltcMaxFrameSeen = rawFrame.Frames;
+
+            FrameRate = LtcDecoder.DetermineFrameRate(_ltcMaxFrameSeen, _ltcDropFrameSeen);
+        }
+
+        // Normalize to engine's FrameRate
         rawFrame = new TimecodeValue(rawFrame.Hours, rawFrame.Minutes, rawFrame.Seconds, rawFrame.Frames, FrameRate);
 
         TimecodeOffset currentOffset;

@@ -7,7 +7,7 @@ public interface ITimecodeEngine
     TimecodeValue CurrentRawTimecode { get; }
     TimecodeValue CurrentOffsetTimecode { get; }
     TimecodeOffset Offset { get; set; }
-    FrameRate FrameRate { get; }
+    FrameRate FrameRate { get; set; }
     TimecodeSourceType ActiveSource { get; }
     bool IsReceiving { get; }
     double FreerunDurationSeconds { get; set; }

@@ -391,7 +391,7 @@ public class CueListViewModelTests
         public TimecodeValue CurrentRawTimecode => default;
         public TimecodeValue CurrentOffsetTimecode => default;
         public TimecodeOffset Offset { get; set; } = TimecodeOffset.Zero(FrameRate.Fps30);
-        public FrameRate FrameRate => FrameRate.Fps30;
+        public FrameRate FrameRate { get; set; } = FrameRate.Fps30;
         public TimecodeSourceType ActiveSource => TimecodeSourceType.Ltc;
         public bool IsReceiving => false;
         public double FreerunDurationSeconds { get; set; }
@@ -436,6 +436,8 @@ public class CueListViewModelTests
             return template;
         }
 
+        public CueBatchEditResult? ShowBatchEditDialog(int cueCount, IReadOnlyList<OscHost> hosts, FrameRate frameRate) => null;
+
         public (int Count, int IntervalHours)? ShowBatchDuplicateDialog()
         {
             return null;
@@ -454,6 +456,7 @@ public class CueListViewModelTests
             return template; // auto-confirm
         }
 
+        public CueBatchEditResult? ShowBatchEditDialog(int cueCount, IReadOnlyList<OscHost> hosts, FrameRate frameRate) => null;
         public (int Count, int IntervalHours)? ShowBatchDuplicateDialog() => null;
     }
 
@@ -464,6 +467,7 @@ public class CueListViewModelTests
         public FixedResultCueDialogService(Cue? result) => _result = result;
 
         public Cue? ShowEditDialog(Cue template, IReadOnlyList<OscHost> hosts, FrameRate frameRate, string title) => _result;
+        public CueBatchEditResult? ShowBatchEditDialog(int cueCount, IReadOnlyList<OscHost> hosts, FrameRate frameRate) => null;
         public (int Count, int IntervalHours)? ShowBatchDuplicateDialog() => null;
     }
 

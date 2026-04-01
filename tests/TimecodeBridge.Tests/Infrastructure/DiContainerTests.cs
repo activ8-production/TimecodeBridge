@@ -22,6 +22,8 @@ public class DiContainerTests
     [InlineData(typeof(ITimecodeRelay))]
     [InlineData(typeof(IHostRegistry))]
     [InlineData(typeof(IProjectService))]
+    [InlineData(typeof(IAppSettingsService))]
+    [InlineData(typeof(IRecentProjectsService))]
     public void Service_ShouldBeResolvable(Type serviceType)
     {
         var service = _serviceProvider.GetService(serviceType);

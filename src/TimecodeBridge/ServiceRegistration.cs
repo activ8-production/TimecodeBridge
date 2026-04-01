@@ -20,19 +20,21 @@ public static class ServiceRegistration
         services.AddSingleton<IOscSender, OscSender>();
         services.AddSingleton<ICueManager, CueManager>();
         services.AddSingleton<ITimecodeRelay, TimecodeRelay>();
-        services.AddSingleton<IProjectService>(_ =>
-        {
-            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var settingsFilePath = System.IO.Path.Combine(appDataPath, "TimecodeBridge", "settings.json");
-            return new ProjectService(settingsFilePath);
-        });
+        services.AddSingleton<IProjectService, ProjectService>();
+        services.AddSingleton<IAppSettingsService, AppSettingsService>();
+        services.AddSingleton<IRecentProjectsService, RecentProjectsService>();
+
+        // Dialog Services (Singleton)
+        services.AddSingleton<ICueDialogService, CueDialogService>();
+        services.AddSingleton<IHostDialogService, HostDialogService>();
+        services.AddSingleton<IFileDialogService, FileDialogService>();
 
         // ViewModels
         services.AddSingleton<TimecodeViewModel>();
         services.AddSingleton<CueListViewModel>();
         services.AddSingleton<RelayViewModel>();
-        services.AddTransient<MainViewModel>();
-        services.AddTransient<HostManagerViewModel>();
+        services.AddSingleton<MainViewModel>();
+        services.AddSingleton<HostManagerViewModel>();
         services.AddTransient<LogViewModel>();
         services.AddTransient<AudioWaveformViewModel>();
     }

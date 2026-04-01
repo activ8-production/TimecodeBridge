@@ -443,7 +443,7 @@ public class CueManagerTests
         public TimecodeValue CurrentRawTimecode => default;
         public TimecodeValue CurrentOffsetTimecode => _currentOffsetTimecode;
         public TimecodeOffset Offset { get; set; } = TimecodeOffset.Zero(FrameRate.Fps30);
-        public FrameRate FrameRate => FrameRate.Fps30;
+        public FrameRate FrameRate { get; set; } = FrameRate.Fps30;
         public TimecodeSourceType ActiveSource => TimecodeSourceType.Ltc;
         public bool IsReceiving => false;
         public double FreerunDurationSeconds { get; set; }

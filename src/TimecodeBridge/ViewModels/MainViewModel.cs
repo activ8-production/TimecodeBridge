@@ -5,9 +5,10 @@ using TimecodeBridge.Services.Interfaces;
 
 namespace TimecodeBridge.ViewModels;
 
-public partial class MainViewModel : ObservableObject
+public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly IProjectService _projectService;
+    private readonly IRecentProjectsService _recentProjectsService;
     private readonly ICueManager _cueManager;
     private readonly IHostRegistry _hostRegistry;
     private readonly ITimecodeRelay _timecodeRelay;
@@ -26,14 +27,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private IReadOnlyList<string> _recentProjects = [];
 
-    [ObservableProperty]
-    private string? _backgroundImagePath;
-
-    [ObservableProperty]
-    private double _backgroundDarkenOpacity = 0.7;
-
     public MainViewModel(
         IProjectService projectService,
+        IRecentProjectsService recentProjectsService,
         ICueManager cueManager,
         IHostRegistry hostRegistry,
         ITimecodeRelay timecodeRelay,
@@ -43,6 +39,7 @@ public partial class MainViewModel : ObservableObject
         RelayViewModel relayViewModel)
     {
         _projectService = projectService;
+        _recentProjectsService = recentProjectsService;
         _cueManager = cueManager;
         _hostRegistry = hostRegistry;
         _timecodeRelay = timecodeRelay;
@@ -51,13 +48,9 @@ public partial class MainViewModel : ObservableObject
         _cueListViewModel = cueListViewModel;
         _relayViewModel = relayViewModel;
 
-        RecentProjects = _projectService.GetRecentProjects();
+        RecentProjects = _recentProjectsService.GetRecentProjects();
         _projectService.UnsavedChangesStatusChanged += OnUnsavedChangesStatusChanged;
 
-        // Load background settings
-        var bg = _projectService.LoadBackgroundSettings();
-        _backgroundImagePath = bg.ImagePath;
-        _backgroundDarkenOpacity = bg.DarkenOpacity;
     }
 
     [RelayCommand]
@@ -106,6 +99,9 @@ public partial class MainViewModel : ObservableObject
         _isNewProject = false;
         var data = _projectService.LoadProject(filePath);
 
+        // MRUリストに追加（ProjectServiceの責務外）
+        _recentProjectsService.AddRecentProject(filePath);
+
         ClearAllData();
 
         // Restore cues
@@ -137,7 +133,7 @@ public partial class MainViewModel : ObservableObject
         _relayViewModel.SyncFromService();
 
         UpdateTitle();
-        RecentProjects = _projectService.GetRecentProjects();
+        RecentProjects = _recentProjectsService.GetRecentProjects();
     }
 
     private void ClearAllData()
@@ -172,38 +168,18 @@ public partial class MainViewModel : ObservableObject
 
         _isNewProject = false;
         _projectService.SaveProject(filePath, data);
+
+        // MRUリストに追加（ProjectServiceの責務外）
+        _recentProjectsService.AddRecentProject(filePath);
+
         UpdateTitle();
-        RecentProjects = _projectService.GetRecentProjects();
+        RecentProjects = _recentProjectsService.GetRecentProjects();
     }
 
     private void OnUnsavedChangesStatusChanged(object? sender, EventArgs e)
     {
         HasUnsavedChanges = _projectService.HasUnsavedChanges;
         UpdateTitle();
-    }
-
-    partial void OnBackgroundImagePathChanged(string? value) => SaveBackgroundSettings();
-    partial void OnBackgroundDarkenOpacityChanged(double value) => SaveBackgroundSettings();
-
-    [RelayCommand]
-    private void SetBackgroundImage(string filePath)
-    {
-        BackgroundImagePath = filePath;
-    }
-
-    [RelayCommand]
-    private void ClearBackgroundImage()
-    {
-        BackgroundImagePath = null;
-    }
-
-    private void SaveBackgroundSettings()
-    {
-        _projectService.SaveBackgroundSettings(new BackgroundSettings
-        {
-            ImagePath = BackgroundImagePath,
-            DarkenOpacity = BackgroundDarkenOpacity,
-        });
     }
 
     private void UpdateTitle()
@@ -226,5 +202,10 @@ public partial class MainViewModel : ObservableObject
         }
 
         Title = title;
+    }
+
+    public void Dispose()
+    {
+        _projectService.UnsavedChangesStatusChanged -= OnUnsavedChangesStatusChanged;
     }
 }

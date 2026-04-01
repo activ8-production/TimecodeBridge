@@ -2,6 +2,9 @@ using TimecodeBridge.Models;
 
 namespace TimecodeBridge.Services.Interfaces;
 
+/// <summary>
+/// プロジェクトファイルの読み書きのみを担当するサービス
+/// </summary>
 public interface IProjectService
 {
     string? CurrentFilePath { get; }
@@ -10,10 +13,6 @@ public interface IProjectService
     ProjectData LoadProject(string filePath);
     void SaveProject(string filePath, ProjectData data);
     void MarkAsChanged();
-    IReadOnlyList<string> GetRecentProjects();
-
-    BackgroundSettings LoadBackgroundSettings();
-    void SaveBackgroundSettings(BackgroundSettings settings);
 
     event EventHandler<EventArgs> UnsavedChangesStatusChanged;
 }

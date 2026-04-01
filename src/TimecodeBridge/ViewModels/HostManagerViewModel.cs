@@ -1,34 +1,26 @@
 using System.Collections.ObjectModel;
-using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TimecodeBridge.Models;
 using TimecodeBridge.Services.Interfaces;
-using TimecodeBridge.Views;
 
 namespace TimecodeBridge.ViewModels;
 
-public partial class HostManagerViewModel : ObservableObject
+public partial class HostManagerViewModel : ObservableObject, IDisposable
 {
     private readonly IHostRegistry _hostRegistry;
     private readonly IOscSender _oscSender;
     private readonly ITimecodeEngine _timecodeEngine;
-
-    /// <summary>
-    /// Shows a host edit dialog. Returns the edited OscHost if confirmed, null if cancelled.
-    /// Replaceable for testing.
-    /// </summary>
-    internal Func<OscHost, OscHost?> ShowHostEditDialog { get; set; }
+    private readonly IHostDialogService _hostDialogService;
 
     public ObservableCollection<OscHost> Hosts { get; } = [];
 
-    public HostManagerViewModel(IHostRegistry hostRegistry, IOscSender oscSender, ITimecodeEngine timecodeEngine)
+    public HostManagerViewModel(IHostRegistry hostRegistry, IOscSender oscSender, ITimecodeEngine timecodeEngine, IHostDialogService hostDialogService)
     {
         _hostRegistry = hostRegistry;
         _oscSender = oscSender;
         _timecodeEngine = timecodeEngine;
-
-        ShowHostEditDialog = DefaultShowHostEditDialog;
+        _hostDialogService = hostDialogService;
 
         // Sync existing hosts
         foreach (var host in _hostRegistry.Hosts)
@@ -38,14 +30,6 @@ public partial class HostManagerViewModel : ObservableObject
 
         // Subscribe to changes
         _hostRegistry.HostChanged += OnHostChanged;
-    }
-
-    private static OscHost? DefaultShowHostEditDialog(OscHost template)
-    {
-        var dialog = new HostEditDialog(template);
-        if (Application.Current?.MainWindow is { } mainWindow)
-            dialog.Owner = mainWindow;
-        return dialog.ShowDialog() == true ? dialog.ResultHost : null;
     }
 
     private void OnHostChanged(object? sender, HostChangedEventArgs e)
@@ -101,7 +85,7 @@ public partial class HostManagerViewModel : ObservableObject
             Port = 9000,
         };
 
-        var result = ShowHostEditDialog(template);
+        var result = _hostDialogService.ShowEditDialog(template);
         if (result is not null)
         {
             result.Id = Guid.NewGuid().ToString();
@@ -115,7 +99,7 @@ public partial class HostManagerViewModel : ObservableObject
         var host = _hostRegistry.Hosts.FirstOrDefault(h => h.Id == hostId);
         if (host is null) return;
 
-        var result = ShowHostEditDialog(host);
+        var result = _hostDialogService.ShowEditDialog(host);
         if (result is not null)
         {
             result.Id = hostId;
@@ -144,5 +128,10 @@ public partial class HostManagerViewModel : ObservableObject
     {
         var fps = _timecodeEngine.FrameRate.FramesPerSecond();
         await _oscSender.SendIcmpPingAsync(hostId, fps);
+    }
+
+    public void Dispose()
+    {
+        _hostRegistry.HostChanged -= OnHostChanged;
     }
 }

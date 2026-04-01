@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace TimecodeBridge.ViewModels;
 
-public abstract class DispatcherViewModel : ObservableObject
+public abstract class DispatcherViewModel : ObservableObject, IDisposable
 {
     protected Dispatcher Dispatcher { get; } = Dispatcher.CurrentDispatcher;
 
@@ -14,4 +14,6 @@ public abstract class DispatcherViewModel : ObservableObject
         else
             Dispatcher.BeginInvoke(action);
     }
+
+    public virtual void Dispose() { }
 }

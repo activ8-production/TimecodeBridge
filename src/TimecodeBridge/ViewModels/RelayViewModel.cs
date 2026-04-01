@@ -6,7 +6,7 @@ using TimecodeBridge.Services.Interfaces;
 
 namespace TimecodeBridge.ViewModels;
 
-public partial class RelayViewModel : ObservableObject
+public partial class RelayViewModel : ObservableObject, IDisposable
 {
     private readonly ITimecodeRelay _timecodeRelay;
     private readonly IHostRegistry _hostRegistry;
@@ -22,7 +22,7 @@ public partial class RelayViewModel : ObservableObject
         _targetHostIds = _timecodeRelay.TargetHostIds;
 
         RefreshHostSelections();
-        _hostRegistry.HostChanged += (_, _) => RefreshHostSelections();
+        _hostRegistry.HostChanged += OnHostChanged;
     }
 
     [ObservableProperty] private string _oscAddressPattern = "/timecode";
@@ -77,6 +77,13 @@ public partial class RelayViewModel : ObservableObject
     private void UpdateHostSelections()
     {
         TargetHostIds = HostSelections.Where(h => h.IsSelected).Select(h => h.Id).ToList();
+    }
+
+    private void OnHostChanged(object? sender, HostChangedEventArgs e) => RefreshHostSelections();
+
+    public void Dispose()
+    {
+        _hostRegistry.HostChanged -= OnHostChanged;
     }
 
     private void RefreshHostSelections()

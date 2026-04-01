@@ -13,6 +13,7 @@ public partial class TimecodeViewModel : DispatcherViewModel
     private readonly ITimecodeEngine _timecodeEngine;
     private bool _hasEverReceived;
     private bool _generatorInitialized;
+    private bool _generatorFrameRateDirty;
 
     [ObservableProperty] private string _rawTimecodeDisplay = "";
     [ObservableProperty] private string _offsetTimecodeDisplay = "";
@@ -89,6 +90,13 @@ public partial class TimecodeViewModel : DispatcherViewModel
         RefreshAudioDevices();
     }
 
+    partial void OnGeneratorFrameRateChanged(FrameRate value)
+    {
+        _timecodeEngine.FrameRate = value;
+        // ジェネレーター初期化済みの場合、次回リセットで再初期化が必要
+        _generatorFrameRateDirty = _generatorInitialized;
+    }
+
     partial void OnIsTriggerMutedChanged(bool value)
     {
         _cueManager.IsMuted = value;
@@ -102,6 +110,7 @@ public partial class TimecodeViewModel : DispatcherViewModel
         _timecodeEngine.Stop();
         _hasEverReceived = false;
         _generatorInitialized = false;
+        _generatorFrameRateDirty = false;
         StatusText = "停止";
         IsReceiving = false;
         IsGeneratorRunning = false;
@@ -212,7 +221,34 @@ public partial class TimecodeViewModel : DispatcherViewModel
     private void ResetGenerator()
     {
         var startTime = ParseTimecodeInput(GeneratorStartTime, GeneratorFrameRate);
-        _timecodeEngine.ResetGenerator(startTime);
+
+        // フレームレートが変更されている場合はジェネレーターを再初期化
+        if (_generatorFrameRateDirty)
+        {
+            bool wasRunning = IsGeneratorRunning;
+            _timecodeEngine.Stop();
+            _generatorInitialized = false;
+
+            var settings = new GeneratorSettings
+            {
+                FrameRate = GeneratorFrameRate,
+                StartTime = startTime,
+                OutputDeviceId = SelectedOutputDevice?.Id ?? string.Empty,
+                VolumeLevel = OutputVolumeLevel,
+            };
+            _timecodeEngine.StartGenerator(settings);
+            _generatorInitialized = true;
+            _generatorFrameRateDirty = false;
+
+            if (!wasRunning)
+            {
+                _timecodeEngine.StopGenerator();
+            }
+        }
+        else
+        {
+            _timecodeEngine.ResetGenerator(startTime);
+        }
     }
 
     private void OnTimecodeUpdated(object? sender, TimecodeUpdatedEventArgs e)

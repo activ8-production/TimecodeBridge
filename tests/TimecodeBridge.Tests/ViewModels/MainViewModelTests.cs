@@ -72,10 +72,6 @@ internal class StubRecentProjectsService : IRecentProjectsService
 
 internal class StubAppSettingsService : IAppSettingsService
 {
-    public BackgroundSettings? LastSavedBackgroundSettings { get; private set; }
-
-    public BackgroundSettings LoadBackgroundSettings() => new();
-    public void SaveBackgroundSettings(BackgroundSettings settings) => LastSavedBackgroundSettings = settings;
     public List<string> LoadRecentProjects() => [];
     public void SaveRecentProjects(List<string> projects) { }
 }
@@ -166,6 +162,7 @@ internal class StubTimecodeRelayForMain : ITimecodeRelay
 internal class StubCueDialogServiceForMain : ICueDialogService
 {
     public Cue? ShowEditDialog(Cue template, IReadOnlyList<OscHost> hosts, FrameRate frameRate, string title) => template;
+    public CueBatchEditResult? ShowBatchEditDialog(int cueCount, IReadOnlyList<OscHost> hosts, FrameRate frameRate) => null;
     public (int Count, int IntervalHours)? ShowBatchDuplicateDialog() => null;
 }
 
@@ -174,7 +171,7 @@ internal class StubTimecodeEngineForMain : ITimecodeEngine
     public TimecodeValue CurrentRawTimecode { get; set; }
     public TimecodeValue CurrentOffsetTimecode { get; set; }
     public TimecodeOffset Offset { get; set; } = TimecodeOffset.Zero(FrameRate.Fps30);
-    public FrameRate FrameRate => FrameRate.Fps30;
+    public FrameRate FrameRate { get; set; } = FrameRate.Fps30;
     public TimecodeSourceType ActiveSource => TimecodeSourceType.Ltc;
     public bool IsReceiving => false;
     public double FreerunDurationSeconds { get; set; }
@@ -199,7 +196,6 @@ public class MainViewModelTests
 {
     private readonly StubProjectService _projectService = new();
     private readonly StubRecentProjectsService _recentProjectsService = new();
-    private readonly StubAppSettingsService _appSettingsService = new();
     private readonly StubCueManagerForMain _cueManager = new();
     private readonly StubHostRegistryForMain _hostRegistry = new();
     private readonly StubTimecodeRelayForMain _timecodeRelay = new();
@@ -218,7 +214,6 @@ public class MainViewModelTests
     private MainViewModel CreateVm() => new(
         _projectService,
         _recentProjectsService,
-        _appSettingsService,
         _cueManager,
         _hostRegistry,
         _timecodeRelay,
@@ -563,42 +558,6 @@ public class MainViewModelTests
         vm.SaveProjectCommand.Execute("C:/test/existing.json");
 
         Assert.Equal("C:/test/existing.json", _projectService.LastSavedPath);
-    }
-
-    // --- Background settings via IAppSettingsService ---
-
-    [Fact]
-    public void Constructor_LoadsBackgroundSettingsFromAppSettingsService()
-    {
-        var vm = CreateVm();
-
-        // StubAppSettingsService returns default BackgroundSettings (null ImagePath, 0.7 opacity)
-        Assert.Null(vm.BackgroundImagePath);
-        Assert.Equal(0.7, vm.BackgroundDarkenOpacity);
-    }
-
-    [Fact]
-    public void SetBackgroundImageCommand_SavesViaAppSettingsService()
-    {
-        var vm = CreateVm();
-
-        vm.SetBackgroundImageCommand.Execute("C:/images/bg.png");
-
-        Assert.Equal("C:/images/bg.png", vm.BackgroundImagePath);
-        Assert.NotNull(_appSettingsService.LastSavedBackgroundSettings);
-        Assert.Equal("C:/images/bg.png", _appSettingsService.LastSavedBackgroundSettings!.ImagePath);
-    }
-
-    [Fact]
-    public void ClearBackgroundImageCommand_ClearsAndSaves()
-    {
-        var vm = CreateVm();
-
-        vm.SetBackgroundImageCommand.Execute("C:/images/bg.png");
-        vm.ClearBackgroundImageCommand.Execute(null);
-
-        Assert.Null(vm.BackgroundImagePath);
-        Assert.Null(_appSettingsService.LastSavedBackgroundSettings!.ImagePath);
     }
 
     // --- Dispose (event unsubscription) ---

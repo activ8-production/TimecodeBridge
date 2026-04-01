@@ -7,13 +7,11 @@ using TimecodeBridge.Services;
 public class ProjectPersistenceTests : IDisposable
 {
     private readonly string _tempDir;
-    private readonly string _settingsFilePath;
 
     public ProjectPersistenceTests()
     {
         _tempDir = Path.Combine(Path.GetTempPath(), "TimecodeBridge_Test_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempDir);
-        _settingsFilePath = Path.Combine(_tempDir, "settings.json");
     }
 
     public void Dispose()
@@ -28,7 +26,7 @@ public class ProjectPersistenceTests : IDisposable
     public void ProjectPersistence_SaveAndLoad_RoundTrip()
     {
         // Arrange
-        var service = new ProjectService(_settingsFilePath);
+        var service = new ProjectService();
         var projectPath = Path.Combine(_tempDir, "test_project.json");
 
         var data = new ProjectData
@@ -146,7 +144,7 @@ public class ProjectPersistenceTests : IDisposable
     public void ProjectPersistence_CuesWithArguments_PreservedOnRoundTrip()
     {
         // Arrange
-        var service = new ProjectService(_settingsFilePath);
+        var service = new ProjectService();
         var projectPath = Path.Combine(_tempDir, "args_project.json");
 
         var data = new ProjectData
@@ -193,7 +191,7 @@ public class ProjectPersistenceTests : IDisposable
     public void ProjectPersistence_RelaySettings_PreservedOnRoundTrip()
     {
         // Arrange
-        var service = new ProjectService(_settingsFilePath);
+        var service = new ProjectService();
         var projectPath = Path.Combine(_tempDir, "relay_project.json");
 
         var data = new ProjectData

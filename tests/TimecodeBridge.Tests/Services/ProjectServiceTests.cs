@@ -9,15 +9,13 @@ using TimecodeBridge.Services.Interfaces;
 public class ProjectServiceTests : IDisposable
 {
     private readonly string _tempDir;
-    private readonly string _settingsFilePath;
     private readonly ProjectService _service;
 
     public ProjectServiceTests()
     {
         _tempDir = Path.Combine(Path.GetTempPath(), "TimecodeBridge_Tests_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempDir);
-        _settingsFilePath = Path.Combine(_tempDir, "settings.json");
-        _service = new ProjectService(_settingsFilePath);
+        _service = new ProjectService();
     }
 
     public void Dispose()
@@ -259,91 +257,5 @@ public class ProjectServiceTests : IDisposable
     public void CurrentFilePath_InitiallyNull()
     {
         Assert.Null(_service.CurrentFilePath);
-    }
-
-    // --- GetRecentProjects ---
-
-    [Fact]
-    public void GetRecentProjects_InitiallyEmpty()
-    {
-        Assert.Empty(_service.GetRecentProjects());
-    }
-
-    [Fact]
-    public void GetRecentProjects_AfterSave_ContainsFilePath()
-    {
-        var filePath = Path.Combine(_tempDir, "test.json");
-        _service.SaveProject(filePath, CreateSampleProjectData());
-
-        var recent = _service.GetRecentProjects();
-
-        Assert.Single(recent);
-        Assert.Equal(filePath, recent[0]);
-    }
-
-    [Fact]
-    public void GetRecentProjects_AfterLoad_ContainsFilePath()
-    {
-        var filePath = Path.Combine(_tempDir, "test.json");
-        _service.SaveProject(filePath, CreateSampleProjectData());
-
-        // Create a new service to test Load independently adding to recents
-        var service2 = new ProjectService(_settingsFilePath);
-        service2.LoadProject(filePath);
-
-        var recent = service2.GetRecentProjects();
-
-        Assert.Contains(filePath, recent);
-    }
-
-    [Fact]
-    public void GetRecentProjects_DuplicatePath_MovesToFront()
-    {
-        var file1 = Path.Combine(_tempDir, "file1.json");
-        var file2 = Path.Combine(_tempDir, "file2.json");
-        var data = CreateSampleProjectData();
-
-        _service.SaveProject(file1, data);
-        _service.SaveProject(file2, data);
-        _service.SaveProject(file1, data); // save file1 again
-
-        var recent = _service.GetRecentProjects();
-
-        Assert.Equal(2, recent.Count);
-        Assert.Equal(file1, recent[0]); // file1 should be first (most recent)
-        Assert.Equal(file2, recent[1]);
-    }
-
-    [Fact]
-    public void GetRecentProjects_MaxHistoryIs10()
-    {
-        var data = CreateSampleProjectData();
-
-        for (int i = 0; i < 12; i++)
-        {
-            var filePath = Path.Combine(_tempDir, $"file{i}.json");
-            _service.SaveProject(filePath, data);
-        }
-
-        var recent = _service.GetRecentProjects();
-
-        Assert.Equal(10, recent.Count);
-        // Most recent should be file11, oldest kept should be file2
-        Assert.Equal(Path.Combine(_tempDir, "file11.json"), recent[0]);
-        Assert.Equal(Path.Combine(_tempDir, "file2.json"), recent[9]);
-    }
-
-    [Fact]
-    public void GetRecentProjects_PersistedAcrossInstances()
-    {
-        var filePath = Path.Combine(_tempDir, "test.json");
-        _service.SaveProject(filePath, CreateSampleProjectData());
-
-        // Create a new instance with the same settings file
-        var service2 = new ProjectService(_settingsFilePath);
-        var recent = service2.GetRecentProjects();
-
-        Assert.Single(recent);
-        Assert.Equal(filePath, recent[0]);
     }
 }

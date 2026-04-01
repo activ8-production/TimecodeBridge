@@ -1,11 +1,10 @@
+using System.Collections;
 using System.Collections.ObjectModel;
-using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TimecodeBridge.Models;
 using TimecodeBridge.Services;
 using TimecodeBridge.Services.Interfaces;
-using TimecodeBridge.Views;
 
 namespace TimecodeBridge.ViewModels;
 
@@ -14,12 +13,7 @@ public partial class CueListViewModel : DispatcherViewModel
     private readonly ICueManager _cueManager;
     private readonly ITimecodeEngine _timecodeEngine;
     private readonly IHostRegistry _hostRegistry;
-
-    /// <summary>
-    /// Shows a cue edit dialog. Returns the edited Cue if confirmed, null if cancelled.
-    /// Replaceable for testing.
-    /// </summary>
-    internal Func<Cue, IReadOnlyList<OscHost>, FrameRate, string, Cue?> ShowCueEditDialog { get; set; }
+    private readonly ICueDialogService _cueDialogService;
 
     public ObservableCollection<CueItemViewModel> CueItems { get; } = [];
 
@@ -36,13 +30,12 @@ public partial class CueListViewModel : DispatcherViewModel
         }
     }
 
-    public CueListViewModel(ICueManager cueManager, ITimecodeEngine timecodeEngine, IHostRegistry hostRegistry)
+    public CueListViewModel(ICueManager cueManager, ITimecodeEngine timecodeEngine, IHostRegistry hostRegistry, ICueDialogService cueDialogService)
     {
         _cueManager = cueManager;
         _timecodeEngine = timecodeEngine;
         _hostRegistry = hostRegistry;
-
-        ShowCueEditDialog = DefaultShowCueEditDialog;
+        _cueDialogService = cueDialogService;
 
         // Populate from existing cues
         foreach (var cue in _cueManager.Cues)
@@ -63,14 +56,6 @@ public partial class CueListViewModel : DispatcherViewModel
         }
     }
 
-    private static Cue? DefaultShowCueEditDialog(Cue template, IReadOnlyList<OscHost> hosts, FrameRate frameRate, string title)
-    {
-        var dialog = new CueEditDialog(template, hosts, frameRate) { Title = title };
-        if (Application.Current?.MainWindow is { } mainWindow)
-            dialog.Owner = mainWindow;
-        return dialog.ShowDialog() == true ? dialog.ResultCue : null;
-    }
-
     [RelayCommand]
     private void AddCue()
     {
@@ -83,7 +68,7 @@ public partial class CueListViewModel : DispatcherViewModel
             TargetHostIds = _hostRegistry.Hosts.Select(h => h.Id).ToList(),
         };
 
-        var result = ShowCueEditDialog(template, _hostRegistry.Hosts, _timecodeEngine.FrameRate, "キュー追加");
+        var result = _cueDialogService.ShowEditDialog(template, _hostRegistry.Hosts, _timecodeEngine.FrameRate, "キュー追加");
         if (result is not null)
         {
             result.Id = Guid.NewGuid().ToString();
@@ -99,7 +84,7 @@ public partial class CueListViewModel : DispatcherViewModel
         var cue = _cueManager.Cues.FirstOrDefault(c => c.Id == cueId);
         if (cue is null) return;
 
-        var result = ShowCueEditDialog(cue, _hostRegistry.Hosts, _timecodeEngine.FrameRate, "キュー編集");
+        var result = _cueDialogService.ShowEditDialog(cue, _hostRegistry.Hosts, _timecodeEngine.FrameRate, "キュー編集");
         if (result is not null)
         {
             result.Id = cueId;
@@ -115,6 +100,55 @@ public partial class CueListViewModel : DispatcherViewModel
                 CueItems[index] = new CueItemViewModel(result);
             }
         }
+    }
+
+    [RelayCommand]
+    private void BatchEditCues(IList? selectedItems)
+    {
+        if (selectedItems is null || selectedItems.Count < 2) return;
+
+        var cueIds = selectedItems.OfType<CueItemViewModel>().Select(c => c.Id).ToList();
+        if (cueIds.Count < 2) return;
+
+        var result = _cueDialogService.ShowBatchEditDialog(cueIds.Count, _hostRegistry.Hosts, _timecodeEngine.FrameRate);
+        if (result is null) return;
+
+        foreach (var cueId in cueIds)
+        {
+            var cue = _cueManager.Cues.FirstOrDefault(c => c.Id == cueId);
+            if (cue is null) continue;
+
+            ApplyBatchEdit(cue, result);
+            _cueManager.UpdateCue(cueId, cue);
+
+            var index = -1;
+            for (int i = 0; i < CueItems.Count; i++)
+            {
+                if (CueItems[i].Id == cueId) { index = i; break; }
+            }
+            if (index >= 0)
+            {
+                CueItems[index] = new CueItemViewModel(cue);
+            }
+        }
+    }
+
+    private static void ApplyBatchEdit(Cue cue, CueBatchEditResult edit)
+    {
+        if (edit.OscAddress is not null)
+            cue.OscAddress = edit.OscAddress;
+        if (edit.Arguments is not null)
+            cue.Arguments = edit.Arguments.ToList();
+        if (edit.TargetHostIds is not null)
+            cue.TargetHostIds = edit.TargetHostIds.ToList();
+        if (edit.IsEnabled.HasValue)
+            cue.IsEnabled = edit.IsEnabled.Value;
+        if (edit.SendTriggerTimeAsSeconds.HasValue)
+            cue.SendTriggerTimeAsSeconds = edit.SendTriggerTimeAsSeconds.Value;
+        if (edit.ApplyOffset)
+            cue.CueOffset = edit.CueOffset;
+        if (edit.ApplyMemo)
+            cue.Memo = edit.Memo ?? string.Empty;
     }
 
     [RelayCommand]
@@ -135,16 +169,15 @@ public partial class CueListViewModel : DispatcherViewModel
         var source = _cueManager.Cues.FirstOrDefault(c => c.Id == cueId);
         if (source is null) return;
 
-        var dialog = new BatchDuplicateDialog();
-        if (Application.Current?.MainWindow is { } mainWindow)
-            dialog.Owner = mainWindow;
-        if (dialog.ShowDialog() != true) return;
+        var batchResult = _cueDialogService.ShowBatchDuplicateDialog();
+        if (batchResult is null) return;
 
+        var (count, intervalHours) = batchResult.Value;
         int fps = source.TriggerTime.FrameRate.FramesPerSecond();
-        long framesPerInterval = (long)dialog.IntervalHours * 3600 * fps;
+        long framesPerInterval = (long)intervalHours * 3600 * fps;
         long baseFrames = source.TriggerTime.TotalFrames();
 
-        for (int i = 1; i <= dialog.Count; i++)
+        for (int i = 1; i <= count; i++)
         {
             long newTotalFrames = baseFrames + framesPerInterval * i;
             var newTriggerTime = TimecodeValue.FromTotalFrames(newTotalFrames, source.TriggerTime.FrameRate);
@@ -260,4 +293,9 @@ public partial class CueListViewModel : DispatcherViewModel
         }
     }
 
+    public override void Dispose()
+    {
+        _cueManager.CueTriggered -= OnCueTriggered;
+        _timecodeEngine.TimecodeUpdated -= OnTimecodeUpdated;
+    }
 }

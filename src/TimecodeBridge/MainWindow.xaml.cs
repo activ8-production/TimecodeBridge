@@ -1,7 +1,5 @@
 using System.ComponentModel;
-using System.IO;
 using System.Windows;
-using System.Windows.Media.Imaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using TimecodeBridge.ViewModels;
@@ -51,59 +49,10 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SetBackgroundMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new OpenFileDialog
-        {
-            Filter = "画像ファイル (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif|すべてのファイル (*.*)|*.*",
-            Title = "背景画像を選択",
-        };
-
-        if (dialog.ShowDialog() == true && DataContext is MainViewModel vm)
-        {
-            vm.SetBackgroundImageCommand.Execute(dialog.FileName);
-            LoadBackgroundImage(dialog.FileName);
-        }
-    }
-
-    private void LoadBackgroundImage(string? imagePath)
-    {
-        if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
-        {
-            BackgroundImage.Source = null;
-            return;
-        }
-
-        try
-        {
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.UriSource = new Uri(imagePath, UriKind.Absolute);
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.EndInit();
-            bitmap.Freeze();
-            BackgroundImage.Source = bitmap;
-        }
-        catch
-        {
-            BackgroundImage.Source = null;
-        }
-    }
-
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (e.NewValue is MainViewModel mainVm)
         {
-            // Load background image from saved settings
-            LoadBackgroundImage(mainVm.BackgroundImagePath);
-
-            // Watch for background image changes
-            mainVm.PropertyChanged += (_, args) =>
-            {
-                if (args.PropertyName == nameof(MainViewModel.BackgroundImagePath))
-                    LoadBackgroundImage(mainVm.BackgroundImagePath);
-            };
-
             // Wire child views to their ViewModels via DI
             TimecodeDisplay.DataContext = App.Services.GetRequiredService<TimecodeViewModel>();
             AudioWaveform.DataContext = App.Services.GetRequiredService<AudioWaveformViewModel>();
