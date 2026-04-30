@@ -1,0 +1,135 @@
+# TimecodeBridge
+
+LTC（Linear Timecode）の受信／内部生成によるタイムコードを基に、指定時刻でOSCメッセージをトリガー送信するWindows向けアプリケーション。ライブイベント・映像制作・舞台演出での時間同期制御を想定しています。
+
+## 主な機能
+
+- **LTC受信**: オーディオ入力からLTCを受信・デコード（24 / 25 / 29.97DF / 30 fps 対応）
+- **内部タイムコード生成**: 任意のフレームレート・開始時間で内部生成し、LTCオーディオ信号として出力可能
+- **キュートリガー**: 指定タイムコードでOSCメッセージを自動送信。手動トリガーボタンも装備
+- **OSCリレー**: 受信中タイムコードを継続送信／ワンショット送信モードで他ホストへ転送
+- **送信先ホスト一元管理**: 複数ホスト（IP/ポート）の登録・接続テスト・有効無効切替
+- **タイムコードオフセット**: ±HH:MM:SS:FF のオフセット設定
+- **プロジェクト保存**: ホスト・キュー・リレー・生成設定を一括で保存／読み込み
+- **ダークテーマUI**: ログパネル、次トリガーキューのハイライト、トリガー時のフィードバック表示
+
+## 動作環境
+
+- Windows 10 / 11（x64）
+- self-contained ビルドを使う場合: 追加のランタイム不要
+- ソースビルドを行う場合: .NET 8 SDK
+
+## インストール
+
+### 方法A: リリース版を使う（推奨）
+
+GitHubリポジトリの **Releases** から最新タグの `TimecodeBridge-vX.Y.Z.exe` をダウンロードし、任意フォルダに配置して実行します。single-file / self-contained 形式のため追加インストールは不要です。
+
+### 方法B: ソースからビルド
+
+```bash
+# プロジェクトルートで
+dotnet build TimecodeBridge.sln -c Release
+```
+
+配布用の self-contained / single-file exe を作る場合:
+
+```bash
+dotnet publish src/TimecodeBridge/TimecodeBridge.csproj -c Release ^
+  --self-contained -r win-x64 ^
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true ^
+  -o publish
+```
+
+LTCのエンコード／デコードには `src/TimecodeBridge/Native/libltc.dll` を使用します。
+
+## クイックスタート
+
+### 1. 送信先ホストを登録
+
+**Host Manager** から OSC 送信先（名前 / IPアドレス / ポート番号）を追加します。各ホストは有効／無効を切替可能で、接続テスト機能もあります。
+
+### 2. タイムコードソースを選ぶ
+
+- **LTC受信モード**: オーディオ入力デバイスを選択し、外部からのLTC音声を受信します。
+- **内部生成モード**: フレームレート（24 / 25 / 29.97DF / 30）と開始時間（HH:MM:SS:FF）を設定し、Start で生成を開始します。LTC出力先のオーディオデバイスを選ぶと、外部機器へLTC信号を供給することもできます。
+
+オフセット（±HH:MM:SS:FF）を設定すると、「オフセット適用済みTimecode」がキュートリガー判定に使用されます。
+
+### 3. キューを作成
+
+**Cue List** に行を追加し、以下を設定します。
+
+- トリガー時刻（HH:MM:SS:FF）
+- 送信先ホスト（複数選択可）
+- OSCアドレスパターン（例: `/play/scene1`）と引数（int32 / float32 / string）
+- 名前・メモ・有効／無効
+
+タイムコードがトリガー時刻に達するとOSCを自動送信します。タイムコード未受信状態でも、各行の手動トリガーボタンで即時送信できます。
+
+### 4. （任意）OSCリレー
+
+受信中のタイムコードを他ホストへOSCとして転送できます。
+
+- **継続送信モード**: フレーム毎または指定インターバルで送信
+- **ワンショット送信モード**: トリガー操作した瞬間の値を1回だけ送信
+- リレー先ホスト・OSCアドレスパターンは個別に指定
+
+### 5. プロジェクトの保存
+
+ホスト一覧／キュー／リレー設定／生成設定／ソース選択を1つのプロジェクトファイルに保存・読み込みできます。最近使用したファイルメニューも利用可能です。
+
+## UI構成（メインウィンドウ）
+
+| エリア | 内容 |
+|---|---|
+| Timecode Display | 生 / オフセット適用済みTimecode、受信状態インジケーター |
+| Cue List | 次にトリガーされる行のハイライト、トリガー時のビジュアルフィードバック |
+| Host Manager | 送信先ホスト一覧と有効／無効切替 |
+| Relay Control | リレーモード切替・送信間隔設定 |
+| Log View | OSC送受信ログのリアルタイム表示 |
+
+## プロジェクト構成
+
+```
+TimecodeBridge/
+├── src/TimecodeBridge/        # アプリ本体（WPF / .NET 8）
+│   ├── Models/                # ドメインモデル
+│   ├── ViewModels/            # MVVM の ViewModel
+│   ├── Views/                 # XAML ビュー
+│   ├── Services/              # LTC・OSC・プロジェクト等の各種サービス
+│   ├── Converters/            # XAML Converter
+│   ├── Themes/                # ダークテーマ
+│   └── Native/                # libltc.dll
+├── tests/                     # テストプロジェクト
+├── .kiro/                     # 仕様駆動開発用 spec / steering
+└── .github/workflows/         # GitHub Actions
+```
+
+## 仕様ドキュメント
+
+詳細な要件・設計は以下を参照してください。
+
+- `.kiro/specs/timecode-osc-bridge/` — LTC受信／キュー／OSC送信／リレーの仕様
+- `.kiro/specs/timecode-generation/` — 内部生成・LTC出力の仕様
+- `.kiro/specs/refactoring/` — リファクタリング仕様
+
+## 使用ライブラリ
+
+- [NAudio](https://github.com/naudio/NAudio) — オーディオ入出力
+- [libltc](https://github.com/x42/libltc) — LTC エンコード／デコード
+- [BuildSoft.OscCore](https://www.nuget.org/packages/BuildSoft.OscCore) — OSC 送受信
+- [CommunityToolkit.Mvvm](https://learn.microsoft.com/dotnet/communitytoolkit/mvvm/) — MVVM 基盤
+
+## リリース運用
+
+`v*` 形式のタグを push すると、GitHub Actions（`.github/workflows/release.yml`）が `windows-latest` 上で self-contained / single-file の exe をビルドし、自動的に GitHub Release にアタッチします。
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+## ライセンス
+
+MIT License — 詳細は [LICENSE](LICENSE) を参照してください。
