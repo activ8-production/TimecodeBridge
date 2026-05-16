@@ -1,5 +1,6 @@
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
+using TimecodeBridge.Native;
 using TimecodeBridge.Services.Interfaces;
 using TimecodeBridge.ViewModels;
 
@@ -14,6 +15,10 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Raise Windows timer resolution to 1 ms so PeriodicTimer / Thread.Sleep
+        // used by TimecodeGenerator and freerun achieve frame-accurate cadence.
+        WinmmTimer.Begin(1);
 
         // Catch unhandled exceptions to prevent silent crashes
         DispatcherUnhandledException += (_, args) =>
@@ -60,6 +65,9 @@ public partial class App : Application
         }
 
         _serviceProvider?.Dispose();
+
+        WinmmTimer.End();
+
         base.OnExit(e);
     }
 }

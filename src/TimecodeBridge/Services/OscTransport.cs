@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using BuildSoft.OscCore;
 using TimecodeBridge.Models;
 using TimecodeBridge.Services.Interfaces;
@@ -6,12 +7,20 @@ namespace TimecodeBridge.Services;
 
 /// <summary>
 /// Production implementation of IOscTransport using BuildSoft.OscCore's OscClient for UDP sending.
+/// Clients are cached per (ip, port) to avoid the per-send UDP socket create/destroy overhead,
+/// which is the dominant jitter source for fixed-rate relay sending.
 /// </summary>
-public class OscTransport : IOscTransport
+public class OscTransport : IOscTransport, IDisposable
 {
+    private readonly ConcurrentDictionary<(string Ip, int Port), OscClient> _clients = new();
+    private volatile bool _disposed;
+
     public void Send(string ipAddress, int port, string oscAddress, IReadOnlyList<OscArgument> arguments)
     {
-        using var client = new OscClient(ipAddress, port);
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(OscTransport));
+
+        var client = _clients.GetOrAdd((ipAddress, port), static key => new OscClient(key.Ip, key.Port));
 
         if (arguments.Count == 0)
         {
@@ -50,5 +59,18 @@ public class OscTransport : IOscTransport
             default:
                 throw new ArgumentException($"Unsupported OscArgument type: {argument.GetType().Name}");
         }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        foreach (var client in _clients.Values)
+        {
+            try { client.Dispose(); } catch { /* swallow per-client errors during shutdown */ }
+        }
+        _clients.Clear();
+        GC.SuppressFinalize(this);
     }
 }
